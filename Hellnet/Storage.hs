@@ -33,13 +33,29 @@ insertChunk chunk
 	| Prelude.length chunk <= chunkSize = do
 		let chunkDigestRaw = SHA512.hash chunk
 		let chunkDigest = hashToHex chunkDigestRaw
-		let fullpath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
-		storeFile fullpath (BS.pack chunk)
+		let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
+		storeFile fullPath (BS.pack chunk)
 		return chunkDigestRaw
+
+getChunk :: [Octet] -> IO [Octet]
+getChunk hsh = do
+	let chunkKey = hashToHex hsh
+	chunk <- retrieveFile (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
+	return (BS.unpack chunk)
+
+toFullPath :: FilePath -> IO FilePath
+toFullPath fpath = do
+	dir <- getAppUserDataDirectory "hellnet"
+	return (joinPath [dir,fpath])
 
 storeFile :: FilePath -> ByteString -> IO ()
 storeFile fpath dat = do
-	dir <- getAppUserDataDirectory "hellnet"
-	let fullPath = joinPath [dir,fpath]
+	fullPath <- toFullPath fpath
 	createDirectoryIfMissing True (dropFileName fullPath)
 	BS.writeFile fullPath dat
+
+retrieveFile :: FilePath -> IO ByteString
+retrieveFile fpath = do
+	fullPath <- toFullPath fpath
+	conts <- BS.readFile fullPath
+	return conts
