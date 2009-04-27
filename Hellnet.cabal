@@ -1,0 +1,16 @@
+Name: hellnet
+Version: 0.1
+Synopsis: Anonymous content distribution network
+Author: Voker57
+Maintainer: voker57@gmail.com
+Build-type: Simple
+Cabal-version: >= 1.2
+library
+ Exposed-Modules: Hellnet
+  Hellnet.Files
+  Hellnet.Utils
+  Hellnet.Storage
+ Build-Depends: base >= 2.0, Crypto >= 4.2, bytestring, pretty >= 1.0, filepath, directory
+Executable hell-insert
+ Main-is: hell-insert.hs
+ Build-Depends: base
