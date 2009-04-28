@@ -14,3 +14,6 @@ library
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
+Executable hell-get
+ Main-is: hell-get.hs
+ Build-Depends: base

@@ -1,4 +1,4 @@
-module Hellnet.Storage (insertFileContents, insertChunk, storeFile) where
+module Hellnet.Storage (insertFileContents, getFileContents, insertChunk) where
 
 import Data.ByteString as BS
 import Data.Digest.SHA512 as SHA512
@@ -42,6 +42,17 @@ getChunk hsh = do
 	let chunkKey = hashToHex hsh
 	chunk <- retrieveFile (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
 	return (BS.unpack chunk)
+
+getFileContents :: [Octet] -> IO [Octet]
+getFileContents hsh = do
+	chunk <- getChunk hsh
+	let pieces = splitFor hashSize chunk
+	morechunks <- if (Prelude.length pieces) == 1024 then
+		getFileContents (Prelude.last pieces)
+		else return []
+	let morechunks' = splitFor chunkSize morechunks
+	conts <- mapM (getChunk) (pieces ++ morechunks')
+	return (Prelude.foldl1 (++) conts)
 
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
