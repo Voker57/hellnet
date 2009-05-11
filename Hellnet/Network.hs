@@ -6,7 +6,6 @@ import System.IO.Error
 nodesList :: IO [(String, Int)]
 nodesList = do
 	listfile <- try readNodesList
-	let getList = (either (const []) (read) listfile) :: [(String, Int)]
-	return getList
+	return (either (const []) (read) listfile)
 
 readNodesList = readFile =<< toFullPath "nodelist"
