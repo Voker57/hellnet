@@ -1,4 +1,4 @@
-module Hellnet.Network (nodesList) where
+module Hellnet.Network (nodesList, writeNodesList) where
 
 import Hellnet.Storage
 import System.IO.Error
