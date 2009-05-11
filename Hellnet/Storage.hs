@@ -1,4 +1,4 @@
-module Hellnet.Storage (insertFileContents, getFileContents, insertChunk, toFullPath) where
+module Hellnet.Storage (insertFileContents, getFileContents, insertChunk, toFullPath, purgeChunk) where
 
 import Data.ByteString as BS
 import Data.Digest.SHA512 as SHA512
@@ -40,7 +40,7 @@ insertChunk chunk
 getChunk :: [Octet] -> IO [Octet]
 getChunk hsh = do
 	let chunkKey = hashToHex hsh
-	chunk <- retrieveFile (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
+	chunk <- getFile (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
 	return (BS.unpack chunk)
 
 getFileContents :: [Octet] -> IO [Octet]
@@ -65,8 +65,14 @@ storeFile fpath dat = do
 	createDirectoryIfMissing True (dropFileName fullPath)
 	BS.writeFile fullPath dat
 
-retrieveFile :: FilePath -> IO ByteString
-retrieveFile fpath = do
+getFile :: FilePath -> IO ByteString
+getFile fpath = do
 	fullPath <- toFullPath fpath
 	conts <- BS.readFile fullPath
 	return conts
+
+purgeChunk :: [Octet] -> IO ()
+purgeChunk hsh = do
+	let hexHsh = hashToHex hsh
+	fpath <- toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
+	removeFile fpath

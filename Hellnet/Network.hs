@@ -1,4 +1,4 @@
-module Hellnet.Network (nodesList, writeNodesList) where
+module Hellnet.Network (retrieveChunk, nodesList, writeNodesList) where
 
 import Hellnet.Storage
 import System.IO.Error
@@ -29,9 +29,9 @@ retrievePieces ps = undefined
 -- 	nodes <- nodesList
 -- 	mapM retrievePiece ps
 
--- | retrieves piece using server, returns success status
-retrievePiece :: Node -> [Octet] -> IO Bool
-retrievePiece s p = do
+-- | retrieves chunk using server, returns success status
+retrieveChunk :: Node -> [Octet] -> IO Bool
+retrieveChunk s p = do
 	let chunkID = hashToHex p
 	let reqString = "http://" ++ (fst s) ++ ":" ++ (show (snd s)) ++ "/chunks/" ++ (take 2 chunkID) ++ "/" ++ (drop 2 chunkID)
 	let req = simpleHTTP (getRequest reqString)
@@ -42,7 +42,12 @@ retrievePiece s p = do
 			(\r -> if (rspCode r) == (2,0,0) then
 				do
 					chID <- Hellnet.Storage.insertChunk (BS.unpack (BS8.pack (rspBody r)))
-					return True
+					if (chID == p) then
+						return True
+						else
+						do
+							Hellnet.Storage.purgeChunk chID
+							return False
 				else
 				return False
 			) resp)
