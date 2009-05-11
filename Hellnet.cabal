@@ -10,7 +10,8 @@ library
   Hellnet.Files
   Hellnet.Utils
   Hellnet.Storage
- Build-Depends: base >= 2.0, Crypto >= 4.2, bytestring, pretty >= 1.0, filepath, directory
+  Hellnet.Network
+ Build-Depends: base >= 2.0, Crypto >= 4.2, bytestring, pretty >= 1.0, filepath, directory, HTTP >= 4000
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
