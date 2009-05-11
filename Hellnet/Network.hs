@@ -1,4 +1,4 @@
-module Hellnet.Network (retrieveChunk, nodesList, writeNodesList) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk) where
 
 import Hellnet.Storage
 import System.IO.Error
@@ -24,24 +24,24 @@ writeNodesList ns = do
 	writeFile fp (show ns)
 
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
-retrieveChunks :: [[Octet]] -> IO [[Octet]]
-retrieveChunks cs = do
+fetchChunks :: [[Octet]] -> IO [[Octet]]
+fetchChunks cs = do
 	nodes <- nodesList
-	let fs = map (retrieveChunksFromNode) nodes
+	let fs = map (fetchChunksFromNode) nodes
 	nps <- filtM fs cs
 	return nps
 
-retrieveChunksFromNode :: Node -> [[Octet]] -> IO [[Octet]]
-retrieveChunksFromNode s cs = filterM (retrieveChunk' s) cs
+fetchChunksFromNode :: Node -> [[Octet]] -> IO [[Octet]]
+fetchChunksFromNode s cs = filterM (fetchChunk' s) cs
 
-retrieveChunk' :: Node -> [Octet] -> IO Bool
-retrieveChunk' s p = do
-	b <- retrieveChunk s p
+fetchChunk' :: Node -> [Octet] -> IO Bool
+fetchChunk' s p = do
+	b <- fetchChunk s p
 	return (not b)
 
 -- | retrieves chunk using server, returns success status
-retrieveChunk :: Node -> [Octet] -> IO Bool
-retrieveChunk s p = do
+fetchChunk :: Node -> [Octet] -> IO Bool
+fetchChunk s p = do
 	let chunkID = hashToHex p
 	let reqString = "http://" ++ (fst s) ++ ":" ++ (show (snd s)) ++ "/chunks/" ++ (take 2 chunkID) ++ "/" ++ (drop 2 chunkID)
 	let req = simpleHTTP (getRequest reqString)
@@ -63,3 +63,13 @@ retrieveChunk s p = do
 			) resp)
 		)
 		(\ _ -> return False)
+
+findChunk :: [Octet] -> IO (Maybe [Octet])
+findChunk hsh = do
+	res <- fetchChunks [hsh]
+	if (null res) then
+		do
+			r <- getChunk hsh
+			return (Just r)
+		else do
+			return Nothing

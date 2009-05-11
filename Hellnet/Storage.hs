@@ -1,4 +1,4 @@
-module Hellnet.Storage (insertFileContents, getFileContents, insertChunk, toFullPath, purgeChunk) where
+module Hellnet.Storage (insertFileContents, getFileContents, getChunk, insertChunk, toFullPath, purgeChunk) where
 
 import Data.ByteString as BS
 import Data.Digest.SHA512 as SHA512
