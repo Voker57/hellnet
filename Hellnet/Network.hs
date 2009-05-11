@@ -5,6 +5,9 @@ import System.IO.Error
 import Network.HTTP
 import Codec.Utils
 import Hellnet.Utils
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
+
 type Node = (String, Int)
 
 nodesList :: IO [Node]
@@ -36,6 +39,12 @@ retrievePiece s p = do
 		resp <- req
 		(either
 			(const (return False))
-			(const (return True)) resp)
+			(\r -> if (rspCode r) == (2,0,0) then
+				do
+					chID <- Hellnet.Storage.insertChunk (BS.unpack (BS8.pack (rspBody r)))
+					return True
+				else
+				return False
+			) resp)
 		)
 		(\ _ -> return False)
