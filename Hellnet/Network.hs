@@ -34,8 +34,8 @@ retrievePiece s p = do
 	let req = simpleHTTP (getRequest reqString)
 	catch (do
 		resp <- req
-		return (either
-			(const False)
-			(const True) resp)
+		(either
+			(const (return False))
+			(const (return True)) resp)
 		)
 		(\ _ -> return False)
