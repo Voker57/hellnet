@@ -1,4 +1,4 @@
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile) where
 
 import Hellnet.Storage
 import System.IO.Error
@@ -6,6 +6,7 @@ import Network.HTTP
 import Codec.Utils
 import Control.Monad
 import Hellnet.Utils
+import Hellnet
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 
@@ -64,12 +65,47 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
+findFile :: [Octet] -> IO (Maybe [Octet])
+findFile hsh = do
+	putStrLn ("Locating file " ++ (hashToHex hsh))
+	link <- findChunk hsh
+	print link
+	res <- maybe (return Nothing) (findFile') link
+	return res
+
+findFile' :: [Octet] -> IO (Maybe [Octet])
+findFile' cs = do
+	putStrLn ("Locating file' " ++ (hashToHex cs))
+	let chs = splitFor hashSize cs
+	putStrLn ("cs = " ++ (show chs))
+	chs' <- findChunks (take hashesPerChunk chs)
+	putStrLn ("chs' = " ++ (show chs'))
+	maybe (return Nothing)
+		(\c -> if (length chs) == (hashesPerChunk + 1) then do
+			f <- findFile (last c)
+			maybe (return Nothing) (\ff -> return (Just ((foldl1 (++) c) ++ ff)) ) f
+			else
+			return (Just (foldl1 (++) c))
+			) chs'
+
+findChunks :: [[Octet]] -> IO (Maybe [[Octet]])
+findChunks chs = do
+	res <- mapM (findChunk) chs
+	if null (filter ((==) (Nothing)) res) then
+		return (Just (map (unjust) res))
+		else
+		return Nothing
+
 findChunk :: [Octet] -> IO (Maybe [Octet])
 findChunk hsh = do
-	res <- fetchChunks [hsh]
-	if (null res) then
-		do
-			r <- getChunk hsh
-			return (Just r)
-		else do
-			return Nothing
+	print ("Locating chunk " ++ (hashToHex hsh))
+	gC <- try (getChunk hsh)
+	either (const (do
+		res <- fetchChunks [hsh]
+		if (null res) then
+			do
+				r <- getChunk hsh
+				return (Just r)
+		   else do
+				return Nothing)
+		) (return . Just) gC

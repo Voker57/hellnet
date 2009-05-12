@@ -1,1 +1,3 @@
  * Catch nodelist's parser errors
+ * Add guards on hashes' sizes
+ * reorganize findChunks / findChunk, they are not optimal

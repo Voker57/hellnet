@@ -15,9 +15,10 @@ main = do
 		else do
 			let hsh = hexToHash (args !! 1)
 			if (head args) == "chunk" then do
-				localConts <- try (getChunk hsh)
-				let getConts = either (const (findChunk hsh)) (return . Just) localConts
+				let getConts = findChunk hsh
 				conts <- getConts
 				maybe (error "Chunk not found in network") (BS.putStr . BS.pack) conts
-				else
-				print "wtf"
+				else do
+				let getFile = findFile hsh
+				fil <- getFile
+				maybe (error "File couldn't be completely found in network") (BS.putStr . BS.pack) fil
