@@ -3,3 +3,29 @@ Hellnet is a project to create simple, anonymous, fast data sharing network. Mor
 This is Hellnet implementation in Haskell, aka hspawn
 
 All files are (c) Voker57 <voker57@gmail.com> unless stated otherwise.
+
+== Usage
+
+=== Storage and retrieval
+
+hell-insert <file> -- insert file into local DB. You are given hash which you can use to later retrieve it.
+
+Example:
+
+% hell-insert COPYING
+COPYING: 361e6d35ac16281294314c5b40b57ccd3f0d5e6ab2ed6088e346f8e181ec4c89ac141a9a786a1f0afc454610f4db8c00af98272f44490a6f601fa08293a13be9
+
+hell-get file <hash> -- retrieve file by its hash, using local DB and remote nodes (if available). File contents are written to STDIN.
+
+Example:
+
+hell-get 361e6d35ac16281294314c5b40b57ccd3f0d5e6ab2ed6088e346f8e181ec4c89ac141a9a786a1f0afc454610f4db8c00af98272f44490a6f601fa08293a13be9 > COPYING
+
+=== Remote nodes
+
+hell-nodes list -- list all known nodes. They are searched for data chunks.
+hell-nodes add <hostname> <port> -- add node to list
+hell-nodes rm <hostname> <port> -- delete node from list
+hell-nodes clear -- clear the nodelist
+
+hell-serve [<port>] -- launches Hellnet server on <port>. Default port is 6666. Server is not required to download data, just to share it.
