@@ -67,19 +67,14 @@ fetchChunk s p = do
 
 findFile :: [Octet] -> IO (Maybe [Octet])
 findFile hsh = do
-	putStrLn ("Locating file " ++ (hashToHex hsh))
 	link <- findChunk hsh
-	print link
 	res <- maybe (return Nothing) (findFile') link
 	return res
 
 findFile' :: [Octet] -> IO (Maybe [Octet])
 findFile' cs = do
-	putStrLn ("Locating file' " ++ (hashToHex cs))
 	let chs = splitFor hashSize cs
-	putStrLn ("cs = " ++ (show chs))
 	chs' <- findChunks (take hashesPerChunk chs)
-	putStrLn ("chs' = " ++ (show chs'))
 	maybe (return Nothing)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
 			f <- findFile (last c)
@@ -98,7 +93,6 @@ findChunks chs = do
 
 findChunk :: [Octet] -> IO (Maybe [Octet])
 findChunk hsh = do
-	print ("Locating chunk " ++ (hashToHex hsh))
 	gC <- try (getChunk hsh)
 	either (const (do
 		res <- fetchChunks [hsh]
