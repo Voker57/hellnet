@@ -18,6 +18,9 @@ Executable hell-insert
 Executable hell-get
  Main-is: hell-get.hs
  Build-Depends: base
+Executable hell-nodes
+ Main-is: hell-nodes.hs
+ Build-Depends: base
 Executable hell-serve
  Main-is: hell-serve.hs
  Build-depends: Lucu, network
