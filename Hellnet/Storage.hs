@@ -31,45 +31,46 @@ import Data.Foldable
 hashAndAppend :: [Octet] -> [Octet] -> IO [Octet]
 a `hashAndAppend` [] = do return a
 a `hashAndAppend` b = do
-	bChunk <- insertChunk b
-	return (a ++ b)
+	bChunk <- insertChunk (BS.pack b)
+	return (a ++ bChunk)
 
 insertFileContents :: ByteString -> IO [Octet]
 insertFileContents bs = do
 	let chunks = splitBsFor chunkSize bs
-	chunkHashes <- mapM (insertChunk . BS.unpack) chunks
+	Prelude.putStrLn "inserting chunks"
+	chunkHashes <- mapM (insertChunk) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
 	let fileLinkChunks = Prelude.map (flatten) fileLink
 		where flatten a = Prelude.foldl1 (++) a
 	fileLinkHead <- foldlM (hashAndAppend) [] (fileLinkChunks)
-	fileLinkHash <- insertChunk fileLinkHead
+	fileLinkHash <- insertChunk (BS.pack fileLinkHead)
 	return fileLinkHash
 
-insertChunk :: [Octet] -> IO [Octet]
+insertChunk :: ByteString -> IO [Octet]
 insertChunk chunk
-	| Prelude.length chunk <= chunkSize = do
-		let chunkDigestRaw = SHA512.hash chunk
+	| BS.length chunk <= chunkSize = do
+		let chunkDigestRaw = SHA512.hash (BS.unpack chunk)
 		let chunkDigest = hashToHex chunkDigestRaw
 		let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
-		storeFile fullPath (BS.pack chunk)
+		storeFile fullPath (chunk)
 		return chunkDigestRaw
 
-getChunk :: [Octet] -> IO [Octet]
+getChunk :: [Octet] -> IO ByteString
 getChunk hsh = do
 	let chunkKey = hashToHex hsh
 	chunk <- getFile (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
-	return (BS.unpack chunk)
+	return chunk
 
-getFileContents :: [Octet] -> IO [Octet]
+getFileContents :: [Octet] -> IO ByteString
 getFileContents hsh = do
 	chunk <- getChunk hsh
-	let pieces = splitFor hashSize chunk
+	let pieces = splitBsFor hashSize chunk
 	morechunks <- if (Prelude.length pieces) == 1024 then
-		getFileContents (Prelude.last pieces)
-		else return []
-	let morechunks' = splitFor chunkSize morechunks
-	conts <- mapM (getChunk) (pieces ++ morechunks')
-	return (Prelude.foldl1 (++) conts)
+		getFileContents (BS.unpack $ (Prelude.last pieces))
+		else return BS.empty
+	let morechunks' = splitBsFor chunkSize morechunks
+	conts <- mapM (getChunk . BS.unpack) (pieces ++ morechunks')
+	return (BS.concat conts)
 
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
