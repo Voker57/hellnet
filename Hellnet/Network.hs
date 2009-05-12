@@ -81,7 +81,7 @@ findFile' cs = do
 			maybe (return Nothing) (\ff -> return (Just ((foldl1 (++) c) ++ ff)) ) f
 			else
 			return (Just (foldl1 (++) c))
-			) chs'
+		) chs'
 
 findChunks :: [[Octet]] -> IO (Maybe [[Octet]])
 findChunks chs = do
