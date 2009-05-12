@@ -1,0 +1,5 @@
+Hellnet is a project to create simple, anonymous, fast data sharing network. More info at [http://bitcheese.net/wiki/hellnet]
+
+This is Hellnet implementation in Haskell, aka hspawn
+
+All files are (c) Voker57 <voker57@gmail.com> unless stated otherwise.
