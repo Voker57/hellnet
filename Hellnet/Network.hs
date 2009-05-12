@@ -40,8 +40,7 @@ readNodesList = readFile =<< toFullPath "nodelist"
 
 writeNodesList :: [Node] -> IO ()
 writeNodesList ns = do
-	fp <- toFullPath "nodelist"
-	writeFile fp (show ns)
+	storeFile "nodelist" (BS8.pack (show ns))
 
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
 fetchChunks :: [[Octet]] -> IO [[Octet]]

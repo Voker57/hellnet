@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, getFileContents, getChunk, insertChunk, toFullPath, purgeChunk) where
+module Hellnet.Storage (insertFileContents, getFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile) where
 
 import Data.ByteString as BS
 import Data.Digest.SHA512 as SHA512
