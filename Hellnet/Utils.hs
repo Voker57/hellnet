@@ -39,7 +39,10 @@ splitFor _ [] = []
 splitFor n xs = (take n xs) : (splitFor n (drop n xs))
 
 -- splitBsFor :: Int -> BS -> [BS]
-splitBsFor n xs = (BS.take n xs) : (splitBsFor n (BS.drop n xs))
+splitBsFor n xs = if BS.null xs then
+	[BS.empty]
+	else
+	(BS.take n xs) : (splitBsFor n (BS.drop n xs))
 
 stringToOctets :: String -> [Octet]
 stringToOctets s = BS.unpack $ BS8.pack s

@@ -25,7 +25,7 @@ import Control.Monad
 import Hellnet.Utils
 import Hellnet
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Char8 as BS8 (pack)
 
 type Node = (String, Int)
 
@@ -69,7 +69,7 @@ fetchChunk s p = do
 			(const (return False))
 			(\r -> if (rspCode r) == (2,0,0) then
 				do
-					chID <- Hellnet.Storage.insertChunk (BS.unpack (BS8.pack (rspBody r)))
+					chID <- Hellnet.Storage.insertChunk (BS8.pack (rspBody r))
 					if (chID == p) then
 						return True
 						else
@@ -82,25 +82,25 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
-findFile :: [Octet] -> IO (Maybe [Octet])
+findFile :: [Octet] -> IO (Maybe BS.ByteString)
 findFile hsh = do
 	link <- findChunk hsh
-	res <- maybe (return Nothing) (findFile') link
+	res <- maybe (return Nothing) (findFile' . BS.unpack) link
 	return res
 
-findFile' :: [Octet] -> IO (Maybe [Octet])
+findFile' :: [Octet] -> IO (Maybe BS.ByteString)
 findFile' cs = do
 	let chs = splitFor hashSize cs
 	chs' <- findChunks (take hashesPerChunk chs)
 	maybe (return Nothing)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
-			f <- findFile (last c)
-			maybe (return Nothing) (\ff -> return (Just ((foldl1 (++) c) ++ ff)) ) f
+			f <- findFile (BS.unpack (last c))
+			maybe (return Nothing) (\ff -> return (Just (BS.concat [(BS.concat c), ff])) ) f
 			else
-			return (Just (foldl1 (++) c))
+			return (Just (BS.concat c))
 		) chs'
 
-findChunks :: [[Octet]] -> IO (Maybe [[Octet]])
+findChunks :: [[Octet]] -> IO (Maybe [BS.ByteString])
 findChunks chs = do
 	res <- mapM (findChunk) chs
 	if null (filter ((==) (Nothing)) res) then
@@ -108,7 +108,7 @@ findChunks chs = do
 		else
 		return Nothing
 
-findChunk :: [Octet] -> IO (Maybe [Octet])
+findChunk :: [Octet] -> IO (Maybe BS.ByteString)
 findChunk hsh = do
 	gC <- try (getChunk hsh)
 	either (const (do

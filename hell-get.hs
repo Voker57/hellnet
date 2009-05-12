@@ -34,8 +34,8 @@ main = do
 			if (head args) == "chunk" then do
 				let getConts = findChunk hsh
 				conts <- getConts
-				maybe (error "Chunk not found in network") (BS.putStr . BS.pack) conts
+				maybe (error "Chunk not found in network") (BS.putStr) conts
 				else do
 				let getFile = findFile hsh
 				fil <- getFile
-				maybe (error "File couldn't be completely found in network") (BS.putStr . BS.pack) fil
+				maybe (error "File couldn't be completely found in network") (BS.putStr) fil
