@@ -27,6 +27,8 @@ import Hellnet
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (pack)
 
+import Debug.Trace
+
 type Node = (String, Int)
 
 nodesList :: IO [Node]
@@ -91,11 +93,11 @@ findFile hsh = do
 findFile' :: [Octet] -> IO (Maybe BS.ByteString)
 findFile' cs = do
 	let chs = splitFor hashSize cs
-	chs' <- findChunks (take (hashesPerChunk + 1) chs)
+	chs' <- findChunks chs
 	maybe (return Nothing)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
 			f <- findFile' (BS.unpack (last c))
-			maybe (return Nothing) (\ff -> return (Just (BS.concat [(BS.concat c), ff])) ) f
+			maybe (return Nothing) (\ff -> return (Just (BS.concat [(BS.concat (init c)), ff])) ) f
 			else
 			return (Just (BS.concat c))
 		) chs'

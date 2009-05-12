@@ -40,7 +40,7 @@ splitFor n xs = (take n xs) : (splitFor n (drop n xs))
 
 -- splitBsFor :: Int -> BS -> [BS]
 splitBsFor n xs = if BS.null xs then
-	[BS.empty]
+	[]
 	else
 	(BS.take n xs) : (splitBsFor n (BS.drop n xs))
 
