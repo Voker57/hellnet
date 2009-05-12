@@ -4,6 +4,15 @@ This is Hellnet implementation in Haskell, aka hspawn
 
 All files are (c) Voker57 <voker57@gmail.com> unless stated otherwise.
 
+== Building
+
+You'll need cabal [http://www.haskell.org/cabal/] to build Hellnet from source. Hellnet requires packages base, Crypto, bytestring, pretty, filepath, directory, HTT to build and additionally Lucu is required for hell-serve.
+
+Just run
+% runhaskell Setup.hs configure
+% runhaskell Setup.hs build
+% runhaskell Setup.hs install
+
 == Usage
 
 === Storage and retrieval
