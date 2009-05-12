@@ -15,14 +15,14 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor)  where
 
 import Codec.Text.Raw
 import Codec.Utils
 import Numeric
 import Text.PrettyPrint.HughesPJ (render)
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
-import qualified Data.ByteString as BS (unpack,pack)
+import qualified Data.ByteString as BS
 import Data.Foldable (foldlM)
 
 unjust :: (Maybe a) -> a
@@ -37,6 +37,9 @@ hexToHash s = map (fst . head . readHex) (splitFor 2 s)
 splitFor :: Int -> [a] -> [[a]]
 splitFor _ [] = []
 splitFor n xs = (take n xs) : (splitFor n (drop n xs))
+
+-- splitBsFor :: Int -> BS -> [BS]
+splitBsFor n xs = (BS.take n xs) : (splitBsFor n (BS.drop n xs))
 
 stringToOctets :: String -> [Octet]
 stringToOctets s = BS.unpack $ BS8.pack s

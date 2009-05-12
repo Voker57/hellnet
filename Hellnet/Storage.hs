@@ -34,10 +34,10 @@ a `hashAndAppend` b = do
 	bChunk <- insertChunk b
 	return (a ++ b)
 
-insertFileContents :: [Octet] -> IO [Octet]
+insertFileContents :: ByteString -> IO [Octet]
 insertFileContents bs = do
-	let chunks = splitFor chunkSize bs
-	chunkHashes <- mapM (insertChunk) chunks
+	let chunks = splitBsFor chunkSize bs
+	chunkHashes <- mapM (insertChunk . BS.unpack) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
 	let fileLinkChunks = Prelude.map (flatten) fileLink
 		where flatten a = Prelude.foldl1 (++) a
