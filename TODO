@@ -1,3 +1,15 @@
+== Tasks.
+
+Trivial
+
  * Catch nodelist's parser errors (fails when shit is on nodelist)
  * reorganize findChunks / findChunk, they are not optimal
+
+Non-trivial
+
+ * Encryption (AES, i think)
+
+Slightly harder
+
  * Multiple downloads at time
+ * Decoy downloads
