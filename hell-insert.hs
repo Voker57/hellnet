@@ -22,7 +22,7 @@ import Control.Monad
 
 insertFilePrintHash fname = do
 	hsh <- insertFile fname
-	putStrLn (fname ++ ": " ++ (hashToHex hsh))
+	putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh))
 
 main = do
 	args <- getArgs
