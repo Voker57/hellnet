@@ -17,7 +17,7 @@ Executable hell-insert
  Build-Depends: base
 Executable hell-get
  Main-is: hell-get.hs
- Build-Depends: base
+ Build-Depends: regex-posix
 Executable hell-nodes
  Main-is: hell-nodes.hs
  Build-Depends: base
