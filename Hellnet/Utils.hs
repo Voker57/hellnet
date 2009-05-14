@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genhash)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -64,7 +64,11 @@ shuffle xs = do
 	let zipd = zip xs (take (length xs) ((randoms gen) :: [Float]))
 	return (map (fst) (sortBy (\a b -> (snd a) `compare` (snd b)) zipd))
 
-genhash :: IO [Octet]
-genhash = do
+genHash :: IO [Octet]
+genHash = do
 	gen <- newStdGen
 	return (map (fromIntegral) (take hashSize (randomRs (0,255) gen) :: [Int]))
+
+-- | discards return value and to make matters worse, taint the result
+discard :: a -> IO ()
+discard _ = return ()

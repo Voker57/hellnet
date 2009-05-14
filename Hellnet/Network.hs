@@ -26,6 +26,7 @@ import Hellnet.Utils
 import Hellnet
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (pack)
+import Random
 
 type Node = (String, Int)
 
@@ -112,7 +113,12 @@ findChunk :: [Octet] -> IO (Maybe BS.ByteString)
 findChunk hsh = do
 	gC <- try (getChunk hsh)
 	either (const (do
+		sendFakeBefore <- randomIO :: IO Bool
+		sendFakeAfter <- randomIO :: IO Bool
+		fakes <- mapM (const genHash) [0..1]
+		when (sendFakeBefore) (discard (fetchChunks [(head fakes)]))
 		res <- fetchChunks [hsh]
+		when (sendFakeAfter) (discard (fetchChunks [(last fakes)]))
 		if (null res) then
 			do
 				r <- getChunk hsh
