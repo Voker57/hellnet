@@ -27,6 +27,7 @@ import Hellnet
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (pack)
 import Random
+import Data.Maybe
 
 type Node = (String, Int)
 
@@ -108,9 +109,14 @@ findChunks chs = do
 	res <- mapM (getChunk) chs
 	let unavailable = map (fst) (filter ((== Nothing) . snd) (zip chs res))
 	if null unavailable then
-		return (Right ((map (unjust) res)))
-		else
-		return (Left (map (fst) (zip chs (filter (== Nothing) res))))
+		return (Right (catMaybes res))
+		else do
+			fromNet <- fetchChunks unavailable
+			if null fromNet then do
+				chs' <- mapM (getChunk) chs
+				return (Right (catMaybes chs'))
+				else
+				return (Left fromNet)
 
 findChunk :: [Octet] -> IO (Maybe BS.ByteString)
 findChunk hsh = do
