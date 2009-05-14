@@ -28,6 +28,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (pack)
 import Random
 import Data.Maybe
+import Data.List
 
 type Node = (String, Int)
 
@@ -45,10 +46,13 @@ writeNodesList ns = do
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
 fetchChunks :: [[Octet]] -> IO [[Octet]]
 fetchChunks cs = do
-	nodes <- nodesList
+	nodes <- shuffle =<< nodesList
+	decoys <- mapM (const genHash) [0..((length cs) `div` 3)]
+	let decoys' = decoys \\ cs
+	chunks <- shuffle (cs ++ decoys')
 	let fs = map (fetchChunksFromNode) nodes
-	nps <- filtM fs cs
-	return nps
+	nps <- filtM fs chunks
+	return (nps \\ decoys')
 
 fetchChunksFromNode :: Node -> [[Octet]] -> IO [[Octet]]
 fetchChunksFromNode s cs = filterM (fetchChunk' s) cs
