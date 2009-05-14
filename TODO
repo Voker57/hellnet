@@ -3,12 +3,10 @@
 Trivial
 
  * Catch nodelist's parser errors (fails when shit is on nodelist)
- * reorganize findChunks / findChunk, they are not optimal. Use Eithers (with unfetched lists) instead of Maybes
 
 Non-trivial
 
  * Encryption (AES, i think)
- * Decoy downloads
 
 Slightly harder
 
