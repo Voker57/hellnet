@@ -82,47 +82,37 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
-findFile :: [Octet] -> IO (Maybe BS.ByteString)
+findFile :: [Octet] -> IO (Either [[Octet]] BS.ByteString)
 findFile hsh = do
 	link <- findChunk hsh
-	res <- maybe (return Nothing) (findFile' . BS.unpack) link
-	return res
+	maybe (return (Left [hsh])) (\l -> do
+		res <- findFile' (BS.unpack l)
+		return res
+		) link
 
-findFile' :: [Octet] -> IO (Maybe BS.ByteString)
+findFile' :: [Octet] -> IO (Either [[Octet]] BS.ByteString)
 findFile' cs = do
 	let chs = splitFor hashSize cs
 	chs' <- findChunks chs
-	maybe (return Nothing)
+	either (return . Left)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
 			f <- findFile' (BS.unpack (last c))
-			maybe (return Nothing) (\ff -> return (Just (BS.concat [(BS.concat (init c)), ff])) ) f
+			either (return . Left) (\ff -> return (Right (BS.concat [(BS.concat (init c)), ff])) ) f
 			else
-			return (Just (BS.concat c))
+			return (Right (BS.concat c))
 		) chs'
 
-findChunks :: [[Octet]] -> IO (Maybe [BS.ByteString])
+-- | tries to locate chunks, returns either list of unavailable ones or list of chunks' content
+findChunks :: [[Octet]] -> IO (Either [[Octet]] [BS.ByteString])
 findChunks chs = do
-	chs' <- shuffle chs
-	res <- mapM (findChunk) chs'
-	if null (filter ((==) (Nothing)) res) then
-		return (Just (map (unjust) res))
+	res <- mapM (getChunk) chs
+	let unavailable = map (fst) (filter ((== Nothing) . snd) (zip chs res))
+	if null unavailable then
+		return (Right ((map (unjust) res)))
 		else
-		return Nothing
+		return (Left (map (fst) (zip chs (filter (== Nothing) res))))
 
 findChunk :: [Octet] -> IO (Maybe BS.ByteString)
 findChunk hsh = do
-	gC <- try (getChunk hsh)
-	either (const (do
-		sendFakeBefore <- randomIO :: IO Bool
-		sendFakeAfter <- randomIO :: IO Bool
-		fakes <- mapM (const genHash) [0..1]
-		when (sendFakeBefore) (discard (fetchChunks [(head fakes)]))
-		res <- fetchChunks [hsh]
-		when (sendFakeAfter) (discard (fetchChunks [(last fakes)]))
-		if (null res) then
-			do
-				r <- getChunk hsh
-				return (Just r)
-		   else do
-				return Nothing)
-		) (return . Just) gC
+	fC <- findChunks [hsh]
+	either (const (return Nothing)) (return . Just . head) fC

@@ -45,4 +45,4 @@ main = do
 				else do
 				let getFile = findFile hsh
 				fil <- getFile
-				maybe (error "File couldn't be completely found in network") (BS.putStr) fil
+				either (const (error "File couldn't be completely found in network")) (BS.putStr) fil

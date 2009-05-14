@@ -15,9 +15,10 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, getFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile) where
+module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile) where
 
-import Data.ByteString as BS
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import Data.Digest.SHA512 as SHA512
 import Codec.Utils
 import Data.Maybe
@@ -34,7 +35,7 @@ a `hashAndAppend` b = do
 	bChunk <- insertChunk (BS.pack b)
 	return (a ++ bChunk)
 
-insertFileContents :: ByteString -> IO [Octet]
+insertFileContents :: BS.ByteString -> IO [Octet]
 insertFileContents bs = do
 	let chunks = splitBsFor chunkSize bs
 	chunkHashes <- mapM (insertChunk) chunks
@@ -45,7 +46,7 @@ insertFileContents bs = do
 	fileLinkHash <- insertChunk (BS.pack fileLinkHead)
 	return fileLinkHash
 
-insertChunk :: ByteString -> IO [Octet]
+insertChunk :: BS.ByteString -> IO [Octet]
 insertChunk chunk
 	| BS.length chunk <= chunkSize = do
 		let chunkDigestRaw = SHA512.hash (BS.unpack chunk)
@@ -54,35 +55,30 @@ insertChunk chunk
 		storeFile fullPath (chunk)
 		return chunkDigestRaw
 
-getChunk :: [Octet] -> IO ByteString
+getChunk :: [Octet] -> IO (Maybe BS.ByteString)
 getChunk hsh = do
 	let chunkKey = hashToHex hsh
-	chunk <- getFile (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
-	return chunk
-
-getFileContents :: [Octet] -> IO ByteString
-getFileContents hsh = do
-	chunk <- getChunk hsh
-	let pieces = splitBsFor hashSize chunk
-	morechunks <- if (Prelude.length pieces) == 1024 then
-		getFileContents (BS.unpack $ (Prelude.last pieces))
-		else return BS.empty
-	let morechunks' = splitBsFor chunkSize morechunks
-	conts <- mapM (getChunk . BS.unpack) (pieces ++ morechunks')
-	return (BS.concat conts)
+	filepath <- toFullPath (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
+	exists <- doesFileExist filepath
+	res <- (if exists then do
+		conts <- BS.readFile filepath
+		return (Just conts)
+		else
+		return Nothing)
+	return res
 
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
 	dir <- getAppUserDataDirectory "hellnet"
 	return (joinPath [dir,fpath])
 
-storeFile :: FilePath -> ByteString -> IO ()
+storeFile :: FilePath -> BS.ByteString -> IO ()
 storeFile fpath dat = do
 	fullPath <- toFullPath fpath
 	createDirectoryIfMissing True (dropFileName fullPath)
 	BS.writeFile fullPath dat
 
-getFile :: FilePath -> IO ByteString
+getFile :: FilePath -> IO BS.ByteString
 getFile fpath = do
 	fullPath <- toFullPath fpath
 	conts <- BS.readFile fullPath
