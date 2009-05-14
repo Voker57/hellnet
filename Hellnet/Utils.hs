@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genhash)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -26,6 +26,8 @@ import qualified Data.ByteString as BS
 import Data.Foldable (foldlM)
 import Random
 import Data.List
+import Hellnet
+import Data.Word
 
 unjust :: (Maybe a) -> a
 unjust (Just a) = a
@@ -61,3 +63,8 @@ shuffle xs = do
 	gen <- newStdGen
 	let zipd = zip xs (take (length xs) ((randoms gen) :: [Float]))
 	return (map (fst) (sortBy (\a b -> (snd a) `compare` (snd b)) zipd))
+
+genhash :: IO [Octet]
+genhash = do
+	gen <- newStdGen
+	return (map (fromIntegral) (take hashSize (randomRs (0,255) gen) :: [Int]))
