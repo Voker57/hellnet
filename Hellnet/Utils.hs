@@ -24,6 +24,8 @@ import Text.PrettyPrint.HughesPJ (render)
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString as BS
 import Data.Foldable (foldlM)
+import Random
+import Data.List
 
 unjust :: (Maybe a) -> a
 unjust (Just a) = a
@@ -52,3 +54,10 @@ filt fs xs = foldl (flip ($)) xs fs
 
 -- | filt for monads
 filtM fs xs = foldlM (flip ($)) xs fs
+
+-- | shuffles list
+shuffle :: [a] -> IO [a]
+shuffle xs = do
+	gen <- newStdGen
+	let zipd = zip xs (take (length xs) ((randoms gen) :: [Float]))
+	return (map (fst) (sortBy (\a b -> (snd a) `compare` (snd b)) zipd))
