@@ -47,7 +47,7 @@ writeNodesList ns = do
 fetchChunks :: [[Octet]] -> IO [[Octet]]
 fetchChunks cs = do
 	nodes <- shuffle =<< nodesList
-	decoys <- mapM (const genHash) [0..((length cs) `div` 3)]
+	decoys <- mapM (const genHash) [0..(((length cs) `div` 3) + 1)]
 	let decoys' = decoys \\ cs
 	chunks <- shuffle (cs ++ decoys')
 	let fs = map (fetchChunksFromNode) nodes
