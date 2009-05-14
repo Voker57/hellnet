@@ -101,7 +101,8 @@ findFile' cs = do
 
 findChunks :: [[Octet]] -> IO (Maybe [BS.ByteString])
 findChunks chs = do
-	res <- mapM (findChunk) chs
+	chs' <- shuffle chs
+	res <- mapM (findChunk) chs'
 	if null (filter ((==) (Nothing)) res) then
 		return (Just (map (unjust) res))
 		else
