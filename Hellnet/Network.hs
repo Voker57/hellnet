@@ -27,8 +27,6 @@ import Hellnet
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (pack)
 
-import Debug.Trace
-
 type Node = (String, Int)
 
 nodesList :: IO [Node]
