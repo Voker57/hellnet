@@ -15,11 +15,12 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES)  where
 
 import Codec.Text.Raw
 import Codec.Utils
 import Numeric
+import Codec.Encryption.AES
 import Text.PrettyPrint.HughesPJ (render)
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString as BS
@@ -28,6 +29,7 @@ import Random
 import Data.List
 import Hellnet
 import Data.Word
+import Data.LargeWord
 
 unjust :: (Maybe a) -> a
 unjust (Just a) = a
@@ -72,3 +74,18 @@ genHash = do
 -- | discards return value and to make matters worse, taint the result
 discard :: a -> IO ()
 discard _ = return ()
+
+genKey :: IO [Octet]
+genKey = do
+	gen <- newStdGen
+	return (map (fromIntegral) (take encKeySize (randomRs (0,255) gen) :: [Int]))
+
+-- | parses command line options, splits flags and args
+simpleOpts :: [String] -> ([String], [String])
+simpleOpts ss = partition ((== '-') . head) ss
+
+decryptAES :: [Octet] -> [Octet] -> [Octet]
+decryptAES key os = listToOctets $ map (decrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os
+
+encryptAES :: [Octet] -> [Octet] -> [Octet]
+encryptAES key os = listToOctets $ map (encrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os

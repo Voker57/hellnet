@@ -23,8 +23,8 @@ import Hellnet
 import Hellnet.Storage
 import Codec.Utils
 
-insertFile :: FilePath -> IO [Octet]
-insertFile fname = do
+insertFile :: FilePath -> Maybe [Octet] -> IO [Octet]
+insertFile fname encKey = do
 	conts <- BS.readFile fname
-	hsh <- insertFileContents conts
+	hsh <- insertFileContents conts encKey
 	return hsh

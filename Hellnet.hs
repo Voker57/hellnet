@@ -15,11 +15,16 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet (hashSize, chunkSize, hashesPerChunk) where
+module Hellnet (hashSize, chunkSize, hashesPerChunk, encKeySize) where
 
 hashSize :: Int
 hashSize = 64
+
 chunkSize :: Int
 chunkSize = 64 * 1024
+
 hashesPerChunk :: Int
 hashesPerChunk = 1023
+
+encKeySize :: Int
+encKeySize = 32

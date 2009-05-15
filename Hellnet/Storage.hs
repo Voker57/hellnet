@@ -29,21 +29,21 @@ import Hellnet
 import Hellnet.Utils
 import Data.Foldable
 
-hashAndAppend :: [Octet] -> [Octet] -> IO [Octet]
-a `hashAndAppend` [] = do return a
-a `hashAndAppend` b = do
-	bChunk <- insertChunk (BS.pack b)
+hashAndAppend :: Maybe [Octet] -> [Octet] -> [Octet] -> IO [Octet]
+hashAndAppend _ a [] = do return a
+hashAndAppend key a b = do
+	bChunk <- maybe (insertChunk (BS.pack b)) (\k -> insertChunk (BS.pack (encryptAES k b))) key
 	return (a ++ bChunk)
 
-insertFileContents :: BS.ByteString -> IO [Octet]
-insertFileContents bs = do
+insertFileContents :: BS.ByteString -> Maybe [Octet] -> IO [Octet]
+insertFileContents bs encKey = do
 	let chunks = splitBsFor chunkSize bs
-	chunkHashes <- mapM (insertChunk) chunks
+	chunkHashes <- mapM (maybe (insertChunk) (\k -> insertChunk . BS.pack . (encryptAES k) . BS.unpack) encKey ) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
 	let fileLinkChunks = Prelude.map (flatten) fileLink
 		where flatten a = Prelude.foldl1 (++) a
-	fileLinkHead <- foldrM (hashAndAppend) [] (fileLinkChunks)
-	fileLinkHash <- insertChunk (BS.pack fileLinkHead)
+	fileLinkHead <- foldrM (hashAndAppend encKey) [] (fileLinkChunks)
+	fileLinkHash <- maybe (insertChunk (BS.pack fileLinkHead)) (\k -> insertChunk (BS.pack (encryptAES k fileLinkHead))) encKey
 	return fileLinkHash
 
 insertChunk :: BS.ByteString -> IO [Octet]
