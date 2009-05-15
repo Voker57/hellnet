@@ -18,6 +18,7 @@
 module Hellnet.Files (insertFile) where
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe
 import Hellnet
 import Hellnet.Storage
@@ -25,6 +26,6 @@ import Codec.Utils
 
 insertFile :: FilePath -> Maybe [Octet] -> IO [Octet]
 insertFile fname encKey = do
-	conts <- BS.readFile fname
+	conts <- BSL.readFile fname
 	hsh <- insertFileContents conts encKey
 	return hsh

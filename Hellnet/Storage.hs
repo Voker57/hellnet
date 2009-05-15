@@ -32,24 +32,24 @@ import Data.Foldable
 hashAndAppend :: Maybe [Octet] -> [Octet] -> [Octet] -> IO [Octet]
 hashAndAppend _ a [] = do return a
 hashAndAppend key a b = do
-	bChunk <- maybe (insertChunk (BS.pack b)) (\k -> insertChunk (BS.pack (encryptAES k b))) key
+	bChunk <- maybe (insertChunk (BSL.pack b)) (\k -> insertChunk (BSL.pack (encryptAES k b))) key
 	return (a ++ bChunk)
 
-insertFileContents :: BS.ByteString -> Maybe [Octet] -> IO [Octet]
+insertFileContents :: BSL.ByteString -> Maybe [Octet] -> IO [Octet]
 insertFileContents bs encKey = do
-	let chunks = splitBsFor chunkSize bs
-	chunkHashes <- mapM (maybe (insertChunk) (\k -> insertChunk . BS.pack . (encryptAES k) . BS.unpack) encKey ) chunks
+	let chunks = splitBslFor chunkSize bs
+	chunkHashes <- mapM (maybe (insertChunk) (\k -> insertChunk . BSL.pack . (encryptAES k) . BSL.unpack) encKey ) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
 	let fileLinkChunks = Prelude.map (flatten) fileLink
 		where flatten a = Prelude.foldl1 (++) a
 	fileLinkHead <- foldrM (hashAndAppend encKey) [] (fileLinkChunks)
-	fileLinkHash <- maybe (insertChunk (BS.pack fileLinkHead)) (\k -> insertChunk (BS.pack (encryptAES k fileLinkHead))) encKey
+	fileLinkHash <- maybe (insertChunk (BSL.pack fileLinkHead)) (\k -> insertChunk (BSL.pack (encryptAES k fileLinkHead))) encKey
 	return fileLinkHash
 
-insertChunk :: BS.ByteString -> IO [Octet]
+insertChunk :: BSL.ByteString -> IO [Octet]
 insertChunk chunk
-	| BS.length chunk <= chunkSize = do
-		let chunkDigestRaw = SHA512.hash (BS.unpack chunk)
+	| BSL.length chunk <= (fromIntegral chunkSize) = do
+		let chunkDigestRaw = SHA512.hash (BSL.unpack chunk)
 		let chunkDigest = hashToHex chunkDigestRaw
 		let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
 		storeFile fullPath (chunk)
@@ -72,11 +72,11 @@ toFullPath fpath = do
 	dir <- getAppUserDataDirectory "hellnet"
 	return (joinPath [dir,fpath])
 
-storeFile :: FilePath -> BS.ByteString -> IO ()
+storeFile :: FilePath -> BSL.ByteString -> IO ()
 storeFile fpath dat = do
 	fullPath <- toFullPath fpath
 	createDirectoryIfMissing True (dropFileName fullPath)
-	BS.writeFile fullPath dat
+	BSL.writeFile fullPath dat
 
 getFile :: FilePath -> IO BS.ByteString
 getFile fpath = do

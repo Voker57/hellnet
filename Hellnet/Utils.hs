@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -24,6 +24,7 @@ import Codec.Encryption.AES
 import Text.PrettyPrint.HughesPJ (render)
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import Data.Foldable (foldlM)
 import Random
 import Data.List
@@ -49,6 +50,12 @@ splitBsFor n xs = if BS.null xs then
 	[]
 	else
 	(BS.take n xs) : (splitBsFor n (BS.drop n xs))
+
+splitBslFor :: Int -> BSL.ByteString -> [BSL.ByteString]
+splitBslFor n xs = if BSL.null xs then
+	[]
+	else
+	(BSL.take (fromIntegral n) xs) : (splitBslFor n (BSL.drop (fromIntegral n) xs))
 
 stringToOctets :: String -> [Octet]
 stringToOctets s = BS.unpack $ BS8.pack s
