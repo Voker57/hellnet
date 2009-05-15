@@ -55,14 +55,14 @@ insertChunk chunk
 		storeFile fullPath (chunk)
 		return chunkDigestRaw
 
-getChunk :: [Octet] -> IO (Maybe BS.ByteString)
-getChunk hsh = do
+getChunk :: Maybe [Octet] -> [Octet] -> IO (Maybe BS.ByteString)
+getChunk key hsh = do
 	let chunkKey = hashToHex hsh
 	filepath <- toFullPath (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
 	exists <- doesFileExist filepath
 	res <- (if exists then do
 		conts <- BS.readFile filepath
-		return (Just conts)
+		return (Just (maybe (conts) (\k -> BS.pack $ decryptAES k $ BS.unpack conts) key))
 		else
 		return Nothing)
 	return res

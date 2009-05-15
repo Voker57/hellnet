@@ -87,42 +87,42 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
-findFile :: [Octet] -> IO (Either [[Octet]] BS.ByteString)
-findFile hsh = do
-	link <- findChunk hsh
+findFile :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BS.ByteString)
+findFile key hsh = do
+	link <- findChunk key hsh
 	maybe (return (Left [hsh])) (\l -> do
-		res <- findFile' (BS.unpack l)
+		res <- findFile' key (BS.unpack l)
 		return res
 		) link
 
-findFile' :: [Octet] -> IO (Either [[Octet]] BS.ByteString)
-findFile' cs = do
+findFile' :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BS.ByteString)
+findFile' key cs = do
 	let chs = splitFor hashSize cs
-	chs' <- findChunks chs
+	chs' <- findChunks key chs
 	either (return . Left)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
-			f <- findFile' (BS.unpack (last c))
+			f <- findFile' key (BS.unpack (last c))
 			either (return . Left) (\ff -> return (Right (BS.concat [(BS.concat (init c)), ff])) ) f
 			else
 			return (Right (BS.concat c))
 		) chs'
 
 -- | tries to locate chunks, returns either list of unavailable ones or list of chunks' content
-findChunks :: [[Octet]] -> IO (Either [[Octet]] [BS.ByteString])
-findChunks chs = do
-	res <- mapM (getChunk) chs
+findChunks :: Maybe [Octet] -> [[Octet]] -> IO (Either [[Octet]] [BS.ByteString])
+findChunks key chs = do
+	res <- mapM (getChunk key) chs
 	let unavailable = map (fst) (filter ((== Nothing) . snd) (zip chs res))
 	if null unavailable then
 		return (Right (catMaybes res))
 		else do
 			fromNet <- fetchChunks unavailable
 			if null fromNet then do
-				chs' <- mapM (getChunk) chs
+				chs' <- mapM (getChunk key) chs
 				return (Right (catMaybes chs'))
 				else
 				return (Left fromNet)
 
-findChunk :: [Octet] -> IO (Maybe BS.ByteString)
-findChunk hsh = do
-	fC <- findChunks [hsh]
+findChunk :: Maybe [Octet] -> [Octet] -> IO (Maybe BS.ByteString)
+findChunk key hsh = do
+	fC <- findChunks key [hsh]
 	either (const (return Nothing)) (return . Just . head) fC

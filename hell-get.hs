@@ -26,6 +26,7 @@ import System.IO.Error
 import Data.Either
 import Text.Regex.Posix
 import Control.Monad
+import Data.List
 
 main = do
 	args <- getArgs
@@ -34,15 +35,17 @@ main = do
 		else do
 			let arg = head args
 			let urlRegex = "^hell://(chunk|file)/([a-f0-9]+)$"
-			when (not (arg =~ urlRegex)) (error "Incorrect hell:// url")
-			let url = head ((arg =~ urlRegex) :: [[String]])
-			let what = url !! 1
-			let hsh = hexToHash (url !! 2)
+			let encryptedUrlRegex = "^hell://(chunk|file)/([a-f0-9]+)\\.([a-f0-9]+)$"
+			when (and [(not (arg =~ urlRegex)), (not (arg =~ encryptedUrlRegex))]) (error "Incorrect hell:// url")
+			let parts = head (if arg =~ urlRegex then arg =~ urlRegex else arg =~ encryptedUrlRegex) :: [String]
+			let what = parts !! 1
+			let hsh = hexToHash (parts !! 2)
+			let key = if (length parts) == 4 then Just $ hexToHash $ last parts else Nothing
 			if (what == "chunk") then do
-				let getConts = findChunk hsh
+				let getConts = findChunk key hsh
 				conts <- getConts
 				maybe (error "Chunk not found in network") (BS.putStr) conts
 				else do
-				let getFile = findFile hsh
+				let getFile = findFile key hsh
 				fil <- getFile
-				either (const (error "File couldn't be completely found in network")) (BS.putStr) fil
+				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (BS.putStr) fil
