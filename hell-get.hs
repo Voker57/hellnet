@@ -21,6 +21,7 @@ import Hellnet.Network
 import System.Environment (getArgs)
 import Data.Char (chr)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Char8 as BS8
 import System.IO.Error
 import Data.Either
@@ -44,8 +45,8 @@ main = do
 			if (what == "chunk") then do
 				let getConts = findChunk key hsh
 				conts <- getConts
-				maybe (error "Chunk not found in network") (BS.putStr) conts
+				maybe (error "Chunk not found in network") (BS.writeFile (last args)) conts
 				else do
 				let getFile = findFile key hsh
 				fil <- getFile
-				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (BS.putStr) fil
+				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (BSL.writeFile (last args)) fil

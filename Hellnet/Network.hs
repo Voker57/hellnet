@@ -42,7 +42,7 @@ readNodesList = readFile =<< toFullPath "nodelist"
 
 writeNodesList :: [Node] -> IO ()
 writeNodesList ns = do
-	storeFile "nodelist" $ BSL.pack $ BS.unpack $ BS8.pack $ show ns
+	storeFile "nodelist" $ BS8.pack $ show ns
 
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
 fetchChunks :: [[Octet]] -> IO [[Octet]]
@@ -75,7 +75,7 @@ fetchChunk s p = do
 			(const (return False))
 			(\r -> if (rspCode r) == (2,0,0) then
 				do
-					chID <- Hellnet.Storage.insertChunk $ BSL.pack $ BS.unpack $ BS8.pack (rspBody r)
+					chID <- Hellnet.Storage.insertChunk $ BS.unpack $ BS8.pack (rspBody r)
 					if (chID == p) then
 						return True
 						else
@@ -88,7 +88,7 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
-findFile :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BS.ByteString)
+findFile :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BSL.ByteString)
 findFile key hsh = do
 	link <- findChunk key hsh
 	maybe (return (Left [hsh])) (\l -> do
@@ -96,16 +96,16 @@ findFile key hsh = do
 		return res
 		) link
 
-findFile' :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BS.ByteString)
+findFile' :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BSL.ByteString)
 findFile' key cs = do
 	let chs = splitFor hashSize cs
 	chs' <- findChunks key chs
 	either (return . Left)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
 			f <- findFile' key (BS.unpack (last c))
-			either (return . Left) (\ff -> return (Right (BS.concat [(BS.concat (init c)), ff])) ) f
+			either (return . Left) (\ff -> return $ Right $ BSL.concat [(BSL.pack $ BS.unpack $ BS.concat $ init c), ff]) f
 			else
-			return (Right (BS.concat c))
+			return (Right (BSL.pack (BS.unpack (BS.concat c))))
 		) chs'
 
 -- | tries to locate chunks, returns either list of unavailable ones or list of chunks' content
