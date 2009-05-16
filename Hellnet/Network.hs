@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile) where
 
 import Hellnet.Storage
 import System.IO.Error
@@ -127,3 +127,25 @@ findChunk :: Maybe [Octet] -> [Octet] -> IO (Maybe BS.ByteString)
 findChunk key hsh = do
 	fC <- findChunks key [hsh]
 	either (const (return Nothing)) (return . Just . head) fC
+
+-- | prepares file for collecting from storage, returns either list of unavailable chunks or unrolled filelink
+locateFile :: [Octet] -> IO (Either [[Octet]] [[Octet]])
+locateFile hsh = do
+	link <- findChunk hsh
+	maybe (return (Left [hsh])) (\l -> do
+		res <- locateFile' (BS.unpack l)
+		return res
+		) link
+
+locateFile' :: [Octet] -> IO (Either [[Octet]] [[Octet]])
+locateFile' cs = do
+	let chs = splitFor hashSize cs
+	chs' <- fetchChunks chs
+	if	not (null chs') then
+		return (Left chs')
+		else
+		if (length chs) == (hashesPerChunk + 1) then do
+			f <- locateFile (last chs)
+			return f
+			else
+			return (Right chs)

@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Files (insertFile) where
+module Hellnet.Files (insertFile, downloadFile) where
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
@@ -29,3 +29,13 @@ insertFile fname encKey = do
 	conts <- BSL.readFile fname
 	hsh <- insertFileContents conts encKey
 	return hsh
+
+getChunkAppendToFile :: FilePath -> [Octet] -> IO ()
+getChunkAppendToFile fname hsh = do
+	conts <- getChunk hsh
+	maybe (return ()) (BS.appendFile fname) conts
+
+downloadFile :: FilePath -> [Octet] -> [[Octet]] -> IO ()
+downloadFile fname encKey hs = do
+	mapM (getChunkAppendToFile fname) hs
+	return ()
