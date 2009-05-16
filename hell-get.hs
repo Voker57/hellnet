@@ -28,6 +28,8 @@ import Data.Either
 import Text.Regex.Posix
 import Control.Monad
 import Data.List
+import Hellnet.Files
+import System.Directory
 
 main = do
 	args <- getArgs
@@ -42,11 +44,12 @@ main = do
 			let what = parts !! 1
 			let hsh = hexToHash (parts !! 2)
 			let key = if (length parts) == 4 then Just $ hexToHash $ last parts else Nothing
+			let fname = if (length args) == 2 then (last args) else "/dev/stdin"
 			if (what == "chunk") then do
 				let getConts = findChunk key hsh
 				conts <- getConts
-				maybe (error "Chunk not found in network") (BS.writeFile (last args)) conts
+				maybe (error "Chunk not found in network") (BS.writeFile fname) conts
 				else do
-				let getFile = findFile key hsh
+				let getFile = locateFile key hsh
 				fil <- getFile
-				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (BSL.writeFile (last args)) fil
+				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (downloadFile fname key) fil

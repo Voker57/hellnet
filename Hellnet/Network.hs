@@ -30,6 +30,7 @@ import qualified Data.ByteString.Char8 as BS8 (pack)
 import Random
 import Data.Maybe
 import Data.List
+import Debug.Trace
 
 type Node = (String, Int)
 
@@ -129,23 +130,28 @@ findChunk key hsh = do
 	either (const (return Nothing)) (return . Just . head) fC
 
 -- | prepares file for collecting from storage, returns either list of unavailable chunks or unrolled filelink
-locateFile :: [Octet] -> IO (Either [[Octet]] [[Octet]])
-locateFile hsh = do
-	link <- findChunk hsh
+locateFile :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] [[Octet]])
+locateFile encKey hsh = do
+	link <- findChunk encKey hsh
 	maybe (return (Left [hsh])) (\l -> do
-		res <- locateFile' (BS.unpack l)
+		res <- locateFile' encKey (BS.unpack l)
 		return res
 		) link
 
-locateFile' :: [Octet] -> IO (Either [[Octet]] [[Octet]])
-locateFile' cs = do
+locateFile' :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] [[Octet]])
+locateFile' encKey cs = do
 	let chs = splitFor hashSize cs
-	chs' <- fetchChunks chs
-	if	not (null chs') then
+	stored <- filterM (isStored) chs
+	chs' <- if stored /= chs then
+		fetchChunks chs
+		else
+		return []
+	if	not (null chs') then do
 		return (Left chs')
 		else
 		if (length chs) == (hashesPerChunk + 1) then do
-			f <- locateFile (last chs)
-			return f
+			c <- getChunk encKey $ last chs
+			f <- locateFile' encKey $ BS.unpack $ unjust $ c
+			return (either (Left) (Right . ((++) (init chs))) f)
 			else
 			return (Right chs)
