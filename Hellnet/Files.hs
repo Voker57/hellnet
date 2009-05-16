@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Files (insertFile) where
+module Hellnet.Files (insertFile, downloadFile) where
 
 import qualified Data.ByteString as BS
 import Data.Maybe
@@ -28,3 +28,13 @@ insertFile fname = do
 	conts <- BS.readFile fname
 	hsh <- insertFileContents conts
 	return hsh
+
+getChunkAppendToFile :: FilePath -> [Octet] -> IO ()
+getChunkAppendToFile fname hsh = do
+	conts <- getChunk hsh
+	maybe (return ()) (BS.appendFile fname) conts
+
+downloadFile :: FilePath -> [Octet] -> [[Octet]] -> IO ()
+downloadFile fname encKey hs = do
+	mapM (getChunkAppendToFile fname) hs
+	return ()
