@@ -73,7 +73,7 @@ shuffle xs = do
 	let zipd = zip xs (take (length xs) ((randoms gen) :: [Float]))
 	return (map (fst) (sortBy (\a b -> (snd a) `compare` (snd b)) zipd))
 
-genHash :: IO [Octet]
+genHash :: IO Hash
 genHash = do
 	gen <- newStdGen
 	return (map (fromIntegral) (take hashSize (randomRs (0,255) gen) :: [Int]))
@@ -82,7 +82,7 @@ genHash = do
 discard :: a -> IO ()
 discard _ = return ()
 
-genKey :: IO [Octet]
+genKey :: IO Key
 genKey = do
 	gen <- newStdGen
 	return (map (fromIntegral) (take encKeySize (randomRs (0,255) gen) :: [Int]))

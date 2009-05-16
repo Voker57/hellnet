@@ -46,7 +46,7 @@ writeNodesList ns = do
 	storeFile "nodelist" $ BS8.pack $ show ns
 
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
-fetchChunks :: [[Octet]] -> IO [[Octet]]
+fetchChunks :: [Hash] -> IO [Hash]
 fetchChunks cs = do
 	nodes <- shuffle =<< nodesList
 	decoys <- mapM (const genHash) [0..(((length cs) `div` 3) + 1)]
@@ -56,16 +56,16 @@ fetchChunks cs = do
 	nps <- filtM fs chunks
 	return (nps \\ decoys')
 
-fetchChunksFromNode :: Node -> [[Octet]] -> IO [[Octet]]
+fetchChunksFromNode :: Node -> [Hash] -> IO [Hash]
 fetchChunksFromNode s cs = filterM (fetchChunk' s) cs
 
-fetchChunk' :: Node -> [Octet] -> IO Bool
+fetchChunk' :: Node -> Hash -> IO Bool
 fetchChunk' s p = do
 	b <- fetchChunk s p
 	return (not b)
 
 -- | retrieves chunk using server, returns success status
-fetchChunk :: Node -> [Octet] -> IO Bool
+fetchChunk :: Node -> Hash -> IO Bool
 fetchChunk s p = do
 	let chunkID = hashToHex p
 	let reqString = "http://" ++ (fst s) ++ ":" ++ (show (snd s)) ++ "/chunks/" ++ (take 2 chunkID) ++ "/" ++ (drop 2 chunkID)
@@ -89,7 +89,7 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
-findFile :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BSL.ByteString)
+findFile :: Maybe Key -> Hash -> IO (Either [Hash] BSL.ByteString)
 findFile key hsh = do
 	link <- findChunk key hsh
 	maybe (return (Left [hsh])) (\l -> do
@@ -97,7 +97,7 @@ findFile key hsh = do
 		return res
 		) link
 
-findFile' :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] BSL.ByteString)
+findFile' :: Maybe Key -> Chunk -> IO (Either [Hash] BSL.ByteString)
 findFile' key cs = do
 	let chs = splitFor hashSize cs
 	chs' <- findChunks key chs
@@ -110,7 +110,7 @@ findFile' key cs = do
 		) chs'
 
 -- | tries to locate chunks, returns either list of unavailable ones or list of chunks' content
-findChunks :: Maybe [Octet] -> [[Octet]] -> IO (Either [[Octet]] [BS.ByteString])
+findChunks :: Maybe Key -> [Hash] -> IO (Either [Hash] [BS.ByteString])
 findChunks key chs = do
 	res <- mapM (getChunk key) chs
 	let unavailable = map (fst) (filter ((== Nothing) . snd) (zip chs res))
@@ -124,13 +124,13 @@ findChunks key chs = do
 				else
 				return (Left fromNet)
 
-findChunk :: Maybe [Octet] -> [Octet] -> IO (Maybe BS.ByteString)
+findChunk :: Maybe Key -> Hash -> IO (Maybe BS.ByteString)
 findChunk key hsh = do
 	fC <- findChunks key [hsh]
 	either (const (return Nothing)) (return . Just . head) fC
 
 -- | prepares file for collecting from storage, returns either list of unavailable chunks or unrolled filelink
-locateFile :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] [[Octet]])
+locateFile :: Maybe Key -> Hash -> IO (Either [Hash] [Hash])
 locateFile encKey hsh = do
 	link <- findChunk encKey hsh
 	maybe (return (Left [hsh])) (\l -> do
@@ -138,7 +138,7 @@ locateFile encKey hsh = do
 		return res
 		) link
 
-locateFile' :: Maybe [Octet] -> [Octet] -> IO (Either [[Octet]] [[Octet]])
+locateFile' :: Maybe Key -> Chunk -> IO (Either [Hash] [Hash])
 locateFile' encKey cs = do
 	let chs = splitFor hashSize cs
 	stored <- filterM (isStored) chs

@@ -29,13 +29,13 @@ import Hellnet
 import Hellnet.Utils
 import Data.Foldable
 
-hashAndAppend :: Maybe [Octet] -> [Octet] -> [Octet] -> IO [Octet]
+hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
 hashAndAppend _ a [] = do return a
 hashAndAppend key a b = do
 	bChunk <- maybe (insertChunk b) (\k -> insertChunk (encryptAES k b)) key
 	return (a ++ bChunk)
 
-insertFileContents :: BSL.ByteString -> Maybe [Octet] -> IO [Octet]
+insertFileContents :: BSL.ByteString -> Maybe Key -> IO Hash
 insertFileContents bs encKey = do
 	let chunks = splitBslFor chunkSize bs
 	chunkHashes <- mapM (maybe (insertChunk . BSL.unpack) (\k -> insertChunk . (encryptAES k) . BSL.unpack) encKey ) chunks
@@ -46,7 +46,7 @@ insertFileContents bs encKey = do
 	fileLinkHash <- maybe (insertChunk (fileLinkHead)) (\k -> insertChunk (encryptAES k fileLinkHead)) encKey
 	return fileLinkHash
 
-insertChunk :: [Octet] -> IO [Octet]
+insertChunk :: Chunk -> IO Hash
 insertChunk chunk
 	| length chunk <= chunkSize = do
 		let chunkDigestRaw = SHA512.hash chunk
@@ -55,7 +55,7 @@ insertChunk chunk
 		storeFile fullPath (BS.pack chunk)
 		return chunkDigestRaw
 
-getChunk :: Maybe [Octet] -> [Octet] -> IO (Maybe BS.ByteString)
+getChunk :: Maybe Key -> Hash -> IO (Maybe BS.ByteString)
 getChunk key hsh = do
 	let chunkKey = hashToHex hsh
 	filepath <- toFullPath (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
@@ -84,16 +84,16 @@ getFile fpath = do
 	conts <- BS.readFile fullPath
 	return conts
 
-purgeChunk :: [Octet] -> IO ()
+purgeChunk :: Hash -> IO ()
 purgeChunk hsh = do
 	let hexHsh = hashToHex hsh
 	fpath <- toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
 	removeFile fpath
 
-hashToPath :: [Octet] -> IO FilePath
+hashToPath :: Hash -> IO FilePath
 hashToPath hsh = let hexHsh = hashToHex hsh in toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
 
-isStored :: [Octet] -> IO Bool
+isStored :: Hash -> IO Bool
 isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)

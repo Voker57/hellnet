@@ -15,7 +15,13 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet (hashSize, chunkSize, hashesPerChunk, encKeySize) where
+module Hellnet (hashSize, chunkSize, hashesPerChunk, encKeySize, Hash, Chunk, Key) where
+
+import Codec.Utils
+
+type Hash = [Octet]
+type Chunk = [Octet]
+type Key = [Octet]
 
 hashSize :: Int
 hashSize = 64
