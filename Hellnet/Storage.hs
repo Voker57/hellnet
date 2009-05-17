@@ -17,17 +17,17 @@
 
 module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored) where
 
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
-import Data.Digest.SHA512 as SHA512
 import Codec.Utils
-import Data.Maybe
 import Control.Monad
-import System.Directory
-import System.FilePath
+import Data.Digest.SHA512 as SHA512
+import Data.Foldable
+import Data.Maybe
 import Hellnet
 import Hellnet.Utils
-import Data.Foldable
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
+import System.Directory
+import System.FilePath
 
 hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
 hashAndAppend _ a [] = do return a

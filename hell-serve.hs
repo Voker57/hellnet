@@ -15,9 +15,9 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+import Hellnet.Storage (toFullPath)
 import Network.HTTP.Lucu as Lucu
 import Network
-import Hellnet.Storage (toFullPath)
 import System.Environment
 
 main = do

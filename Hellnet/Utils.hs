@@ -17,20 +17,20 @@
 
 module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor)  where
 
+import Codec.Encryption.AES
 import Codec.Text.Raw
 import Codec.Utils
-import Numeric
-import Codec.Encryption.AES
-import Text.PrettyPrint.HughesPJ (render)
-import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
 import Data.Foldable (foldlM)
-import Random
-import Data.List
-import Hellnet
-import Data.Word
 import Data.LargeWord
+import Data.List
+import Data.Word
+import Hellnet
+import Numeric
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
+import qualified Data.ByteString.Lazy as BSL
+import Random
+import Text.PrettyPrint.HughesPJ (render)
 
 unjust :: (Maybe a) -> a
 unjust (Just a) = a

@@ -15,10 +15,10 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-import Hellnet.Network
-import System.Environment
-import Hellnet.Storage
 import Control.Exception (evaluate)
+import Hellnet.Network
+import Hellnet.Storage
+import System.Environment
 
 node ss = ( (ss !! 1), (read (ss !! 2)) :: Int )
 

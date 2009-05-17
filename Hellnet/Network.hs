@@ -17,20 +17,20 @@
 
 module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile) where
 
-import Hellnet.Storage
-import System.IO.Error
-import Network.HTTP
 import Codec.Utils
 import Control.Monad
-import Hellnet.Utils
-import Hellnet
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Char8 as BS8 (pack)
-import Random
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import Debug.Trace
+import Hellnet
+import Hellnet.Storage
+import Hellnet.Utils
+import Network.HTTP
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8 (pack)
+import qualified Data.ByteString.Lazy as BSL
+import Random
+import System.IO.Error
 
 type Node = (String, Int)
 

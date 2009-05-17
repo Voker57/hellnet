@@ -17,13 +17,13 @@
 
 module Hellnet.Files (insertFile, downloadFile) where
 
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BSL
+import Codec.Utils
 import Data.Maybe
 import Hellnet
-import Hellnet.Utils
 import Hellnet.Storage
-import Codec.Utils
+import Hellnet.Utils
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 
 insertFile :: Maybe [Octet] -> FilePath -> IO [Octet]
 insertFile encKey fname  = do
