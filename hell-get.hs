@@ -57,4 +57,4 @@ main = do
 				else do
 				let getFile = locateFile key hsh
 				fil <- getFile
-				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (downloadFile fname key) fil
+				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (downloadFile key fname) fil

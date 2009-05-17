@@ -35,8 +35,8 @@ hashAndAppend encKey a b = do
 	bChunk <- insertChunk encKey b
 	return (a ++ bChunk)
 
-insertFileContents :: BSL.ByteString -> Maybe Key -> IO Hash
-insertFileContents bs encKey = do
+insertFileContents :: Maybe Key -> BSL.ByteString -> IO Hash
+insertFileContents encKey bs = do
 	let chunks = splitBslFor chunkSize bs
 	chunkHashes <- mapM ((insertChunk encKey) . BSL.unpack) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes

@@ -36,7 +36,7 @@ insertFilePrintHash encKey fname = do
 		hsh <- insertChunk encKey (BS.unpack dat)
 		maybe (putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
 		else do
-		hsh <- insertFile fname encKey
+		hsh <- insertFile encKey fname
 		maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
 
 main = do

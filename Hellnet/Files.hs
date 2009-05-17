@@ -25,18 +25,18 @@ import Hellnet.Utils
 import Hellnet.Storage
 import Codec.Utils
 
-insertFile :: FilePath -> Maybe [Octet] -> IO [Octet]
-insertFile fname encKey = do
+insertFile :: Maybe [Octet] -> FilePath -> IO [Octet]
+insertFile encKey fname  = do
 	conts <- BSL.readFile fname
-	hsh <- insertFileContents conts encKey
+	hsh <- insertFileContents encKey conts
 	return hsh
 
-getChunkAppendToFile :: FilePath -> Maybe [Octet] -> [Octet] -> IO ()
-getChunkAppendToFile fname encKey hsh = do
+getChunkAppendToFile :: Maybe [Octet] -> FilePath -> [Octet] -> IO ()
+getChunkAppendToFile encKey fname hsh = do
 	conts <- getChunk encKey hsh
 	maybe (error ("chunk not found in storage: " ++ (hashToHex hsh))) (BS.appendFile fname) conts
 
-downloadFile :: FilePath -> Maybe [Octet] -> [[Octet]] -> IO ()
-downloadFile fname encKey hs = do
-	mapM (getChunkAppendToFile fname encKey ) hs
+downloadFile :: Maybe [Octet] -> FilePath -> [[Octet]] -> IO ()
+downloadFile encKey fname hs = do
+	mapM (getChunkAppendToFile encKey fname) hs
 	return ()
