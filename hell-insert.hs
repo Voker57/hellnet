@@ -17,19 +17,27 @@
 
 import Hellnet.Files
 import Hellnet.Utils
+import Hellnet
+import Hellnet.Storage
 import System.Environment (getArgs)
 import Control.Monad
 import Codec.Utils
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString as BS
 import System.FilePath
-import System.Posix.Files
+import System.IO
 
 insertFilePrintHash :: Maybe [Octet] -> FilePath  -> IO ()
 insertFilePrintHash encKey fname = do
 	let filename = last (splitPath fname)
-	hsh <- insertFile fname encKey
-	maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+	siz <- catch (withFile fname ReadMode (hFileSize)) (const $ return $ (fromIntegral chunkSize) + 1)
+	if siz <= (fromIntegral chunkSize) then do
+		dat <- BS.readFile fname
+		hsh <- insertChunk encKey (BS.unpack dat)
+		maybe (putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+		else do
+		hsh <- insertFile fname encKey
+		maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
 
 main = do
 	argz <- getArgs
