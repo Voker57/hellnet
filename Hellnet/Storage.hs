@@ -31,24 +31,25 @@ import Data.Foldable
 
 hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
 hashAndAppend _ a [] = do return a
-hashAndAppend key a b = do
-	bChunk <- maybe (insertChunk b) (\k -> insertChunk (encryptAES k b)) key
+hashAndAppend encKey a b = do
+	bChunk <- insertChunk encKey b
 	return (a ++ bChunk)
 
 insertFileContents :: BSL.ByteString -> Maybe Key -> IO Hash
 insertFileContents bs encKey = do
 	let chunks = splitBslFor chunkSize bs
-	chunkHashes <- mapM (maybe (insertChunk . BSL.unpack) (\k -> insertChunk . (encryptAES k) . BSL.unpack) encKey ) chunks
+	chunkHashes <- mapM ((insertChunk encKey) . BSL.unpack) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
 	let fileLinkChunks = Prelude.map (flatten) fileLink
 		where flatten a = Prelude.foldl1 (++) a
 	fileLinkHead <- foldrM (hashAndAppend encKey) [] (fileLinkChunks)
-	fileLinkHash <- maybe (insertChunk (fileLinkHead)) (\k -> insertChunk (encryptAES k fileLinkHead)) encKey
+	fileLinkHash <- insertChunk encKey fileLinkHead
 	return fileLinkHash
 
-insertChunk :: Chunk -> IO Hash
-insertChunk chunk
-	| length chunk <= chunkSize = do
+insertChunk :: Maybe Key -> Chunk -> IO Hash
+insertChunk encKey ch
+	| length ch <= chunkSize = do
+		let chunk = maybe (ch) ((flip encryptAES) ch) encKey
 		let chunkDigestRaw = SHA512.hash chunk
 		let chunkDigest = hashToHex chunkDigestRaw
 		let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]

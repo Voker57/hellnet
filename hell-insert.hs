@@ -23,11 +23,12 @@ import Codec.Utils
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString as BS
 import System.FilePath
+import System.Posix.Files
 
 insertFilePrintHash :: Maybe [Octet] -> FilePath  -> IO ()
 insertFilePrintHash encKey fname = do
-	hsh <- insertFile fname encKey
 	let filename = last (splitPath fname)
+	hsh <- insertFile fname encKey
 	maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
 
 main = do

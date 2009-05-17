@@ -45,9 +45,9 @@ main = do
 			let hsh = hexToHash (parts !! 2)
 			let key = if arg =~ encryptedUrlRegex then Just $ hexToHash $ parts !! 3 else Nothing
 			let fname = if (length args) == 2 then last args
-				else if and [(arg =~ encryptedUrlRegex), ((length parts) == 4)] then
+				else if and [(arg =~ encryptedUrlRegex), (not (null (last parts)))] then
 					last parts
-					else if and [(arg =~ urlRegex), ((length parts) == 5)] then
+					else if and [(arg =~ urlRegex), (not (null (last parts)))] then
 						last parts
 						else "/dev/stdin"
 			if (what == "chunk") then do

@@ -76,7 +76,7 @@ fetchChunk s p = do
 			(const (return False))
 			(\r -> if (rspCode r) == (2,0,0) then
 				do
-					chID <- Hellnet.Storage.insertChunk $ BS.unpack $ BS8.pack (rspBody r)
+					chID <- Hellnet.Storage.insertChunk Nothing $ BS.unpack $ BS8.pack (rspBody r)
 					if (chID == p) then
 						return True
 						else
