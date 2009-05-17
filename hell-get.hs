@@ -37,14 +37,19 @@ main = do
 		Prelude.putStrLn "Usage: hell-get <hell:// url>"
 		else do
 			let arg = head args
-			let urlRegex = "^hell://(chunk|file)/([a-f0-9]+)$"
-			let encryptedUrlRegex = "^hell://(chunk|file)/([a-f0-9]+)\\.([a-f0-9]+)$"
+			let urlRegex = "^hell://(chunk|file)/([a-f0-9]+)(:?/([^/]+))?$"
+			let encryptedUrlRegex = "^hell://(chunk|file)/([a-f0-9]+)\\.([a-f0-9]+)(:?/([^/]+))?$"
 			when (and [(not (arg =~ urlRegex)), (not (arg =~ encryptedUrlRegex))]) (error "Incorrect hell:// url")
 			let parts = head (if arg =~ urlRegex then arg =~ urlRegex else arg =~ encryptedUrlRegex) :: [String]
 			let what = parts !! 1
 			let hsh = hexToHash (parts !! 2)
-			let key = if (length parts) == 4 then Just $ hexToHash $ last parts else Nothing
-			let fname = if (length args) == 2 then (last args) else "/dev/stdin"
+			let key = if arg =~ encryptedUrlRegex then Just $ hexToHash $ parts !! 3 else Nothing
+			let fname = if (length args) == 2 then last args
+				else if and [(arg =~ encryptedUrlRegex), ((length parts) == 4)] then
+					last parts
+					else if and [(arg =~ urlRegex), ((length parts) == 5)] then
+						last parts
+						else "/dev/stdin"
 			if (what == "chunk") then do
 				let getConts = findChunk key hsh
 				conts <- getConts
@@ -53,3 +58,4 @@ main = do
 				let getFile = locateFile key hsh
 				fil <- getFile
 				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (downloadFile fname key) fil
+				putStrLn fname
