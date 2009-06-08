@@ -15,11 +15,12 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, splitOn)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, splitOn, forkChild)  where
 
 import Codec.Encryption.AES
 import Codec.Text.Raw
 import Codec.Utils
+import Control.Concurrent
 import Data.Foldable (foldlM)
 import Data.LargeWord
 import Data.List
@@ -99,3 +100,9 @@ encryptAES key os = listToOctets $ map (encrypt ((fromOctets 256 key) :: Word256
 
 splitOn :: (Eq a) => a -> [a] -> ([a], [a])
 splitOn x xs = ( (takeWhile (/= x) xs), (dropWhile (/= x) xs) )
+
+forkChild :: IO a -> IO (MVar a)
+forkChild m = do
+	v <- newEmptyMVar
+	forkIO $ putMVar v =<< m
+	return v

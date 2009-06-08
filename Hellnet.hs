@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet (hashSize, chunkSize, hashesPerChunk, encKeySize, Hash, Chunk, Key) where
+module Hellnet where
 
 import Codec.Utils
 
@@ -34,3 +34,6 @@ hashesPerChunk = (chunkSize `div` hashSize) - 1
 
 encKeySize :: Int
 encKeySize = 32
+
+getThreads :: Int
+getThreads = 4

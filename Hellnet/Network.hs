@@ -18,6 +18,7 @@
 module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile) where
 
 import Codec.Utils
+import Control.Concurrent
 import Control.Monad
 import Data.List
 import Data.Maybe
@@ -48,13 +49,21 @@ writeNodesList ns = do
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
 fetchChunks :: [Hash] -> IO [Hash]
 fetchChunks cs = do
-	nodes <- shuffle =<< nodesList
+	nodes <- nodesList
 	decoys <- mapM (const genHash) [0..(((length cs) `div` 3) + 1)]
 	let decoys' = decoys \\ cs
 	chunks <- shuffle (cs ++ decoys')
-	let fs = map (fetchChunksFromNode) nodes
-	nps <- filtM fs chunks
-	return (nps \\ decoys')
+	let todos = splitFor getThreads chunks
+	workers <- mapM (forkChild) $ map (fetchChunksFromNodes nodes) todos
+	nps <- mapM (takeMVar) workers
+	return ((concat nps) \\ decoys')
+
+-- | for usage in workers
+fetchChunksFromNodes :: [Node] -> [Hash] -> IO [Hash]
+fetchChunksFromNodes ns cs = do
+	nodes <- shuffle ns
+	let fs = map (fetchChunksFromNode) ns
+	return =<< filtM fs cs
 
 fetchChunksFromNode :: Node -> [Hash] -> IO [Hash]
 fetchChunksFromNode s cs = filterM (fetchChunk' s) cs
