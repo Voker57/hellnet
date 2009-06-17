@@ -42,19 +42,14 @@ options = [
 
 defaultOptions = Opts {encKey = Nothing, encrypt = False, meta = []}
 
+
 insertFilePrintHash :: Maybe [Octet] -> [Meta] -> FilePath -> IO ()
 insertFilePrintHash encKey metas fname = do
 	let filename = last (splitPath fname)
-	siz <- catch (withFile fname ReadMode (hFileSize)) (const $ return $ (fromIntegral chunkSize) + 1)
-	if siz <= (fromIntegral chunkSize) then do
-		dat <- BS.readFile fname
-		hsh <- insertChunk encKey (BS.unpack dat)
-		maybe (putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
-		addHashToMetas hsh metas
-		else do
-		hsh <- insertFile encKey fname
-		maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
-		addHashToMetas hsh metas
+	dat <- BS.readFile fname
+	hsh <- insertFile encKey fname
+	maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+	addHashToMetas hsh metas
 
 main = do
 	args <- getArgs
