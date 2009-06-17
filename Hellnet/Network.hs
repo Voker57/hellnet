@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile, fetchHashesByMetaFromNode, fetchHashesByMetaFromNodes, fetchChunksByMeta) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -164,3 +164,29 @@ locateFile' encKey cs = do
 			return (either (Left) (Right . ((++) (init chs))) f)
 			else
 			return (Right chs)
+
+fetchHashesByMetaFromNode :: String -> String -> Node -> IO [Hash]
+fetchHashesByMetaFromNode key value node = do
+	let reqString = "http://" ++ (fst node) ++ ":" ++ (show $ snd node)
+		++ "/meta/" ++ key ++ "/" ++ value
+	catch (do
+		rep <- simpleHTTP (getRequest reqString)
+		return $ either (const []) (\rsp -> if (rspCode rsp) == (2,0,0) then
+			splitFor hashSize $ BS.unpack $ BS8.pack $ rspBody rsp
+			else
+			[]) rep
+		) (const $ return [])
+
+fetchHashesByMetaFromNodes :: String -> String -> [Node] -> IO [Hash]
+fetchHashesByMetaFromNodes key value nodes = do
+	hs <- mapM (fetchHashesByMetaFromNode key value) nodes
+	return $ nub $ concat hs
+
+fetchChunksByMeta :: (Maybe Key) -> String -> String -> IO [Chunk]
+fetchChunksByMeta encKey key value = do
+	nodes <- shuffle =<< nodesList
+	let nodeSets = splitFor getThreads nodes
+	workers <- mapM (forkChild) $ map (fetchHashesByMetaFromNodes key value) nodeSets
+	ress <- mapM (takeMVar) workers
+	addHashesToMeta key value $ (nub . concat) ress
+	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< getHashesByMeta key value

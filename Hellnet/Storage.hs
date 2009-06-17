@@ -15,12 +15,13 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored) where
+module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta) where
 
 import Codec.Utils
 import Control.Monad
 import Data.Digest.SHA512 as SHA512
-import Data.Foldable
+import Data.Foldable hiding (concat)
+import Data.List
 import Data.Maybe
 import Hellnet
 import Hellnet.Utils
@@ -98,3 +99,15 @@ isStored :: Hash -> IO Bool
 isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
+
+getHashesByMeta :: String -> String -> IO [Hash]
+getHashesByMeta key value = do
+	let [k,v] = map (dropWhile (=='/')) [key,value]
+	conts <- catch (getFile $ joinPath ["meta",k,v]) (const $ return BS.empty)
+	return $ splitFor hashSize $ BS.unpack conts
+
+addHashesToMeta :: String -> String -> [Hash] -> IO ()
+addHashesToMeta value key hs = do
+	current <- catch (getFile (joinPath ["meta",value,key])) (const $ return BS.empty)
+	let currentList = splitFor hashSize (BS.unpack current)
+	storeFile (joinPath ["meta",value,key]) $ BS.pack $ concat $ nub (currentList ++ hs)
