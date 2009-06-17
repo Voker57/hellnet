@@ -4,7 +4,7 @@ Trivial
 
  * Catch nodelist's parser errors (fails when shit is on nodelist)
  * Make hell-fsck command to check the store for inconsistency
- * Make getFile return empty string on fail (?)
+ * Make getFile return -empty string on fail- Maybe (and get rid of that ghetto mentality)
 
 Non-trivial
 
