@@ -108,9 +108,11 @@ getHashesByMeta (Meta key value) = do
 
 addHashesToMeta :: Meta -> [Hash] -> IO ()
 addHashesToMeta (Meta key value) hs = do
-	current <- catch (getFile (joinPath ["meta",value,key])) (const $ return BS.empty)
+	current <- catch (getFile (joinPath ["meta",key,value])) (const $ return BS.empty)
 	let currentList = splitFor hashSize (BS.unpack current)
-	storeFile (joinPath ["meta",value,key]) $ BS.pack $ concat $ nub (currentList ++ hs)
+	storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)
 
 addHashToMetas :: Hash -> [Meta] -> IO ()
-addHashToMetas h ms = discard $ mapM ((flip addHashesToMeta) [h]) ms
+addHashToMetas h ms = do
+	mapM ((flip addHashesToMeta) [h]) ms
+	return ()
