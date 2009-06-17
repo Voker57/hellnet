@@ -165,8 +165,8 @@ locateFile' encKey cs = do
 			else
 			return (Right chs)
 
-fetchHashesByMetaFromNode :: String -> String -> Node -> IO [Hash]
-fetchHashesByMetaFromNode key value node = do
+fetchHashesByMetaFromNode :: Meta -> Node -> IO [Hash]
+fetchHashesByMetaFromNode (Meta key value) node = do
 	let reqString = "http://" ++ (fst node) ++ ":" ++ (show $ snd node)
 		++ "/meta/" ++ key ++ "/" ++ value
 	catch (do
@@ -177,16 +177,16 @@ fetchHashesByMetaFromNode key value node = do
 			[]) rep
 		) (const $ return [])
 
-fetchHashesByMetaFromNodes :: String -> String -> [Node] -> IO [Hash]
-fetchHashesByMetaFromNodes key value nodes = do
-	hs <- mapM (fetchHashesByMetaFromNode key value) nodes
+fetchHashesByMetaFromNodes :: Meta -> [Node] -> IO [Hash]
+fetchHashesByMetaFromNodes m nodes = do
+	hs <- mapM (fetchHashesByMetaFromNode m) nodes
 	return $ nub $ concat hs
 
-fetchChunksByMeta :: (Maybe Key) -> String -> String -> IO [Chunk]
-fetchChunksByMeta encKey key value = do
+fetchChunksByMeta :: (Maybe Key) -> Meta -> IO [Chunk]
+fetchChunksByMeta encKey m = do
 	nodes <- shuffle =<< nodesList
 	let nodeSets = splitFor getThreads nodes
-	workers <- mapM (forkChild) $ map (fetchHashesByMetaFromNodes key value) nodeSets
+	workers <- mapM (forkChild) $ map (fetchHashesByMetaFromNodes m) nodeSets
 	ress <- mapM (takeMVar) workers
-	addHashesToMeta key value $ (nub . concat) ress
-	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< getHashesByMeta key value
+	addHashesToMeta m $ (nub . concat) ress
+	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< getHashesByMeta m

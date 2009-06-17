@@ -23,6 +23,8 @@ type Hash = [Octet]
 type Chunk = [Octet]
 type Key = [Octet]
 
+data Meta = Meta String String -- key value
+
 hashSize :: Int
 hashSize = 64
 

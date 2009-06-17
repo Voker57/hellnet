@@ -23,34 +23,44 @@ import Hellnet.Storage
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
+import System.Console.GetOpt
 import System.Environment (getArgs)
 import System.FilePath
 import System.IO
 
-insertFilePrintHash :: Maybe [Octet] -> FilePath  -> IO ()
-insertFilePrintHash encKey fname = do
+data Opts = Opts {encKey :: (Maybe String), encrypt :: Bool, meta :: [Meta]}
+
+options :: [OptDescr (Opts -> Opts)]
+options = [
+	Option ['k'] ["key"]
+		(ReqArg (\s o -> o {encKey = Just s}) "key") "Encrypt with specified key",
+	Option ['e'] ["encrypt"]
+		(NoArg (\o -> o {encrypt = True})) "Encrypt file",
+	Option ['m'] ["meta"]
+		(ReqArg (\s o -> o {meta = let sp = splitInTwo ':' s in (Meta (fst sp) (snd sp)) : (meta o)}) "key:value") "Add file with specified meta"
+	]
+
+defaultOptions = Opts {encKey = Nothing, encrypt = False, meta = []}
+
+insertFilePrintHash :: Maybe [Octet] -> [Meta] -> FilePath -> IO ()
+insertFilePrintHash encKey metas fname = do
 	let filename = last (splitPath fname)
 	siz <- catch (withFile fname ReadMode (hFileSize)) (const $ return $ (fromIntegral chunkSize) + 1)
 	if siz <= (fromIntegral chunkSize) then do
 		dat <- BS.readFile fname
 		hsh <- insertChunk encKey (BS.unpack dat)
 		maybe (putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+		addHashToMetas hsh metas
 		else do
 		hsh <- insertFile encKey fname
 		maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+		addHashToMetas hsh metas
 
 main = do
-	argz <- getArgs
-	let (opts, args) = simpleOpts argz
-	when (length args == 0) (putStrLn ("Usage: hell-insert <file1> [<file2>...]\n" ++
-		"Options: -e -- encrypt file\n" ++
-			"-k -- use key specified as last parameter for encryption, instead of random one"))
-	let encKey = if "-k" `elem` opts then return $ BS.unpack $ BS8.pack $ last args else genKey
+	args <- getArgs
+ 	let (opts, argz, errs) = getOpt Permute options args
+	let optz = processOptions defaultOptions opts
+	when (or [(not . null $ errs), (null argz)]) (fail $ (usageInfo "Usage: hell-insert [file] file1 [file2...]" options) ++ concat errs)
+	theKey <- maybe (genKey) (return . BS.unpack . BS8.pack) (encKey optz)
 
-	let files = if "-k" `elem` opts then init args else args
-
-	if "-e" `elem` opts then do
-		key <- encKey
-		mapM (insertFilePrintHash (Just key)) files
-		else
-		mapM (insertFilePrintHash Nothing) files
+	mapM (insertFilePrintHash (if encrypt optz then (Just $ theKey) else Nothing) (meta optz)) argz

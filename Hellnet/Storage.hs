@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta) where
+module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas) where
 
 import Codec.Utils
 import Control.Monad
@@ -100,14 +100,17 @@ isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
 
-getHashesByMeta :: String -> String -> IO [Hash]
-getHashesByMeta key value = do
+getHashesByMeta :: Meta -> IO [Hash]
+getHashesByMeta (Meta key value) = do
 	let [k,v] = map (dropWhile (=='/')) [key,value]
 	conts <- catch (getFile $ joinPath ["meta",k,v]) (const $ return BS.empty)
 	return $ splitFor hashSize $ BS.unpack conts
 
-addHashesToMeta :: String -> String -> [Hash] -> IO ()
-addHashesToMeta value key hs = do
+addHashesToMeta :: Meta -> [Hash] -> IO ()
+addHashesToMeta (Meta key value) hs = do
 	current <- catch (getFile (joinPath ["meta",value,key])) (const $ return BS.empty)
 	let currentList = splitFor hashSize (BS.unpack current)
 	storeFile (joinPath ["meta",value,key]) $ BS.pack $ concat $ nub (currentList ++ hs)
+
+addHashToMetas :: Hash -> [Meta] -> IO ()
+addHashToMetas h ms = discard $ mapM ((flip addHashesToMeta) [h]) ms
