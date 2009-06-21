@@ -110,8 +110,9 @@ getHashesByMeta (Meta key value) = do
 addHashesToMeta :: Meta -> [Hash] -> IO ()
 addHashesToMeta (Meta key value) hs = do
 	current <- getFile (joinPath ["meta",key,value])
-	maybe (return ()) (\c -> let currentList = splitFor hashSize (BS.unpack c) in
-		storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)) current
+	let c = fromMaybe BS.empty current
+	let currentList = splitFor hashSize (BS.unpack c)
+	storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)
 
 addHashToMetas :: Hash -> [Meta] -> IO ()
 addHashToMetas h ms = do
