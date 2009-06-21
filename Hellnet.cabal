@@ -24,55 +24,6 @@ Executable hell-nodes
 Executable hell-serve
  Main-is: hell-serve.hs
  Build-depends: Lucu, network
-Name: hellnet
-Version: 0.1
-Synopsis: Anonymous content distribution network
-Author: Voker57
-Maintainer: voker57@gmail.com
-Build-type: Simple
-Cabal-version: >= 1.2
-library
- Exposed-Modules: Hellnet
-  Hellnet.Files
-  Hellnet.Utils
-  Hellnet.Storage
-  Hellnet.Network
- Build-Depends: base, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000
-Executable hell-insert
- Main-is: hell-insert.hs
- Build-Depends: base
-Executable hell-get
- Main-is: hell-get.hs
- Build-Depends: regex-posix
-Executable hell-nodes
- Main-is: hell-nodes.hs
- Build-Depends: base
-Executable hell-serve
- Main-is: hell-serve.hs
- Build-depends: Lucu, network
-Name: hellnet
-Version: 0.1
-Synopsis: Anonymous content distribution network
-Author: Voker57
-Maintainer: voker57@gmail.com
-Build-type: Simple
-Cabal-version: >= 1.2
-library
- Exposed-Modules: Hellnet
-  Hellnet.Files
-  Hellnet.Utils
-  Hellnet.Storage
-  Hellnet.Network
- Build-Depends: base, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000
-Executable hell-insert
- Main-is: hell-insert.hs
- Build-Depends: base
-Executable hell-get
- Main-is: hell-get.hs
- Build-Depends: regex-posix
-Executable hell-nodes
- Main-is: hell-nodes.hs
- Build-Depends: base
-Executable hell-serve
- Main-is: hell-serve.hs
- Build-depends: Lucu, network
+Executable hell-search
+ Main-is: hell-search.hs
+ Build-depends: base
