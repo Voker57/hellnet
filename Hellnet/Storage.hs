@@ -80,11 +80,12 @@ storeFile fpath dat = do
 	createDirectoryIfMissing True (dropFileName fullPath)
 	BS.writeFile fullPath dat
 
-getFile :: FilePath -> IO BS.ByteString
+getFile :: FilePath -> IO (Maybe BS.ByteString)
 getFile fpath = do
 	fullPath <- toFullPath fpath
-	conts <- BS.readFile fullPath
-	return conts
+	catch (do
+		conts <- BS.readFile fullPath
+		return (Just conts)) (const (return Nothing))
 
 purgeChunk :: Hash -> IO ()
 purgeChunk hsh = do
@@ -103,14 +104,14 @@ isStored hsh = do
 getHashesByMeta :: Meta -> IO [Hash]
 getHashesByMeta (Meta key value) = do
 	let [k,v] = map (dropWhile (=='/')) [key,value]
-	conts <- catch (getFile $ joinPath ["meta",k,v]) (const $ return BS.empty)
-	return $ splitFor hashSize $ BS.unpack conts
+	conts <- getFile $ joinPath ["meta",k,v]
+	return $ maybe [] ((splitFor hashSize) . BS.unpack) conts
 
 addHashesToMeta :: Meta -> [Hash] -> IO ()
 addHashesToMeta (Meta key value) hs = do
-	current <- catch (getFile (joinPath ["meta",key,value])) (const $ return BS.empty)
-	let currentList = splitFor hashSize (BS.unpack current)
-	storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)
+	current <- getFile (joinPath ["meta",key,value])
+	maybe (return ()) (\c -> let currentList = splitFor hashSize (BS.unpack c) in
+		storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)) current
 
 addHashToMetas :: Hash -> [Meta] -> IO ()
 addHashToMetas h ms = do
