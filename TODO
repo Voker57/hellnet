@@ -7,7 +7,7 @@ Trivial
 
 Non-trivial
 
--
+ * Fix APIs (use consistant types' policy, find/locate/fetch)
 
 Slightly harder
 
@@ -16,3 +16,4 @@ Slightly harder
 Requires more thinking
 
  * Node discovery
+ * Better meta exchange protocol
