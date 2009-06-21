@@ -5,7 +5,7 @@ import System.Environment
 fetchThemPrintThem :: String -> IO ()
 fetchThemPrintThem s = do
 	let m = metaFromString s
-	hs <- fetchHashesByMeta m
+	hs <- findHashesByMeta m
 	mapM_ (\h -> putStrLn $ s ++ "\thell://file/" ++ (hashToHex h)) hs
 
 main = do

@@ -27,3 +27,6 @@ Executable hell-serve
 Executable hell-search
  Main-is: hell-search.hs
  Build-depends: base
+Executable hell-talk
+ Main-is: hell-talk.hs
+ Build-depends: base
