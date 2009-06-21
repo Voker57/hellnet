@@ -1,13 +1,14 @@
 == Tasks.
 
-Trivial
+-Trivial- Boring
 
  * Catch nodelist's parser errors (fails when shit is on nodelist)
  * Make hell-fsck command to check the store for inconsistency
+ * Fix hell-get when it comes to stdin.
 
 Non-trivial
 
- * Fix APIs (use consistant types' policy, find/locate/fetch)
+-
 
 Slightly harder
 

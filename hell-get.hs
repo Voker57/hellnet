@@ -55,6 +55,5 @@ main = do
 				conts <- getConts
 				maybe (error "Chunk not found in network") (BS.writeFile fname) conts
 				else do
-				let getFile = locateFile key hsh
-				fil <- getFile
+				fil <- fetchFile key hsh
 				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (downloadFile key fname) fil

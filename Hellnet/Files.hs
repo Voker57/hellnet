@@ -25,18 +25,18 @@ import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 
-insertFile :: Maybe [Octet] -> FilePath -> IO [Octet]
+insertFile :: Maybe Key -> FilePath -> IO [Octet]
 insertFile encKey fname  = do
 	conts <- BSL.readFile fname
 	hsh <- insertFileContents encKey conts
 	return hsh
 
-getChunkAppendToFile :: Maybe [Octet] -> FilePath -> [Octet] -> IO ()
+getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()
 getChunkAppendToFile encKey fname hsh = do
 	conts <- getChunk encKey hsh
 	maybe (error ("chunk not found in storage: " ++ (hashToHex hsh))) (BS.appendFile fname) conts
 
-downloadFile :: Maybe [Octet] -> FilePath -> [[Octet]] -> IO ()
+downloadFile :: Maybe [Octet] -> FilePath -> [Hash] -> IO ()
 downloadFile encKey fname hs = do
 	mapM (getChunkAppendToFile encKey fname) hs
 	return ()

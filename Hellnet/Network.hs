@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile, fetchHashesByMetaFromNode, fetchHashesByMetaFromNodes, fetchChunksByMeta, fetchHashesByMeta) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -98,6 +98,7 @@ fetchChunk s p = do
 		)
 		(\ _ -> return False)
 
+-- | find file, returns either not found chunks or file in lazy ByteString
 findFile :: Maybe Key -> Hash -> IO (Either [Hash] BSL.ByteString)
 findFile key hsh = do
 	link <- findChunk key hsh
@@ -139,16 +140,16 @@ findChunk key hsh = do
 	either (const (return Nothing)) (return . Just . head) fC
 
 -- | prepares file for collecting from storage, returns either list of unavailable chunks or unrolled filelink
-locateFile :: Maybe Key -> Hash -> IO (Either [Hash] [Hash])
-locateFile encKey hsh = do
+fetchFile :: Maybe Key -> Hash -> IO (Either [Hash] [Hash])
+fetchFile encKey hsh = do
 	link <- findChunk encKey hsh
 	maybe (return (Left [hsh])) (\l -> do
-		res <- locateFile' encKey (BS.unpack l)
+		res <- fetchFile' encKey (BS.unpack l)
 		return res
 		) link
 
-locateFile' :: Maybe Key -> Chunk -> IO (Either [Hash] [Hash])
-locateFile' encKey cs = do
+fetchFile' :: Maybe Key -> Chunk -> IO (Either [Hash] [Hash])
+fetchFile' encKey cs = do
 	let chs = splitFor hashSize cs
 	stored <- filterM (isStored) chs
 	chs' <- if stored /= chs then
@@ -160,13 +161,13 @@ locateFile' encKey cs = do
 		else
 		if (length chs) == (hashesPerChunk + 1) then do
 			c <- getChunk encKey $ last chs
-			f <- locateFile' encKey $ BS.unpack $ unjust $ c
+			f <- fetchFile' encKey $ BS.unpack $ unjust $ c
 			return (either (Left) (Right . ((++) (init chs))) f)
 			else
 			return (Right chs)
 
-fetchHashesByMetaFromNode :: Meta -> Node -> IO [Hash]
-fetchHashesByMetaFromNode (Meta key value) node = do
+findHashesByMetaFromNode :: Meta -> Node -> IO [Hash]
+findHashesByMetaFromNode (Meta key value) node = do
 	let reqString = "http://" ++ (fst node) ++ ":" ++ (show $ snd node)
 		++ "/meta/" ++ key ++ "/" ++ value
 	catch (do
@@ -177,20 +178,20 @@ fetchHashesByMetaFromNode (Meta key value) node = do
 			[]) rep
 		) (const $ return [])
 
-fetchHashesByMetaFromNodes :: Meta -> [Node] -> IO [Hash]
-fetchHashesByMetaFromNodes m nodes = do
-	hs <- mapM (fetchHashesByMetaFromNode m) nodes
+findHashesByMetaFromNodes :: Meta -> [Node] -> IO [Hash]
+findHashesByMetaFromNodes m nodes = do
+	hs <- mapM (findHashesByMetaFromNode m) nodes
 	return $ nub $ concat hs
 
-fetchChunksByMeta :: (Maybe Key) -> Meta -> IO [Chunk]
-fetchChunksByMeta encKey m = do
-	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< fetchHashesByMeta m
+findChunksByMeta :: (Maybe Key) -> Meta -> IO [Chunk]
+findChunksByMeta encKey m = do
+	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< findHashesByMeta m
 
-fetchHashesByMeta :: Meta -> IO [Hash]
-fetchHashesByMeta m = do
+findHashesByMeta :: Meta -> IO [Hash]
+findHashesByMeta m = do
 	nodes <- shuffle =<< nodesList
 	let nodeSets = splitFor getThreads nodes
-	workers <- mapM (forkChild) $ map (fetchHashesByMetaFromNodes m) nodeSets
+	workers <- mapM (forkChild) $ map (findHashesByMetaFromNodes m) nodeSets
 	ress <- mapM (takeMVar) workers
 	addHashesToMeta m $ (nub . concat) ress
 	return =<< getHashesByMeta m
