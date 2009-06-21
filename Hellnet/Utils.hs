@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, splitOn, forkChild, splitInTwo, processOptions)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, splitOn, forkChild, splitInTwo, processOptions, metaFromString)  where
 
 import Codec.Encryption.AES
 import Codec.Text.Raw
@@ -111,3 +111,6 @@ splitInTwo :: Char -> String -> (String, String)
 splitInTwo c s = let broken = break (== c) s in ((fst broken), (tail $ snd broken))
 
 processOptions def = foldl (flip ($)) def
+
+metaFromString :: String -> Meta
+metaFromString s = let (a, b) = splitInTwo ':' s in Meta a b

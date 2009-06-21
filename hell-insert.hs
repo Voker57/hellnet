@@ -57,5 +57,4 @@ main = do
 	let optz = processOptions defaultOptions opts
 	when (or [(not . null $ errs), (null argz)]) (fail $ (usageInfo "Usage: hell-insert [file] file1 [file2...]" options) ++ concat errs)
 	theKey <- maybe (genKey) (return . BS.unpack . BS8.pack) (encKey optz)
-
 	mapM (insertFilePrintHash (if encrypt optz then (Just $ theKey) else Nothing) (meta optz)) argz

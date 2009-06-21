@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile, fetchHashesByMetaFromNode, fetchHashesByMetaFromNodes, fetchChunksByMeta) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, locateFile, fetchHashesByMetaFromNode, fetchHashesByMetaFromNodes, fetchChunksByMeta, fetchHashesByMeta) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -184,9 +184,13 @@ fetchHashesByMetaFromNodes m nodes = do
 
 fetchChunksByMeta :: (Maybe Key) -> Meta -> IO [Chunk]
 fetchChunksByMeta encKey m = do
+	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< fetchHashesByMeta m
+
+fetchHashesByMeta :: Meta -> IO [Hash]
+fetchHashesByMeta m = do
 	nodes <- shuffle =<< nodesList
 	let nodeSets = splitFor getThreads nodes
 	workers <- mapM (forkChild) $ map (fetchHashesByMetaFromNodes m) nodeSets
 	ress <- mapM (takeMVar) workers
 	addHashesToMeta m $ (nub . concat) ress
-	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< getHashesByMeta m
+	return =<< getHashesByMeta m
