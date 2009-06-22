@@ -28,5 +28,6 @@ main = do
 		fromIntegral (read (head args) :: Int) :: PortNumber
 	let config = defaultConfig { cnfServerPort = PortNumber port };
 	chunksPath <- toFullPath "store"
-	let resources = mkResTree [ (["chunks"], staticDir chunksPath) ]
+	metaPath <- toFullPath "meta"
+	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath) ]
 	runHttpd config resources []
