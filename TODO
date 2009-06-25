@@ -18,3 +18,5 @@ Requires more thinking
 
  * Node discovery
  * Better meta exchange protocol
+ * Other ways of exchanging data than HTTP
+ * Digital signatures

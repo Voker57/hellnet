@@ -49,7 +49,7 @@ main = do
 					last parts
 					else if and [(arg =~ urlRegex), (not (null (last parts)))] then
 						last parts
-						else "/dev/stdin"
+						else "/dev/stdout"
 			if (what == "chunk") then do
 				let getConts = findChunk key hsh
 				conts <- getConts

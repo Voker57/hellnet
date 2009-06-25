@@ -36,7 +36,7 @@ getChunkAppendToFile encKey fname hsh = do
 	conts <- getChunk encKey hsh
 	maybe (error ("chunk not found in storage: " ++ (hashToHex hsh))) (BS.appendFile fname) conts
 
-downloadFile :: Maybe [Octet] -> FilePath -> [Hash] -> IO ()
+downloadFile :: Maybe Key -> FilePath -> [Hash] -> IO ()
 downloadFile encKey fname hs = do
 	mapM (getChunkAppendToFile encKey fname) hs
 	return ()
