@@ -28,7 +28,7 @@ import qualified Data.ByteString.Lazy as BSL
 insertFile :: Maybe Key -> FilePath -> IO [Octet]
 insertFile encKey fname  = do
 	conts <- BSL.readFile fname
-	hsh <- insertFileContents encKey conts
+	hsh <- insertFileContentsLazy encKey conts
 	return hsh
 
 getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()

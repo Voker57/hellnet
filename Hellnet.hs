@@ -37,5 +37,5 @@ hashesPerChunk = (chunkSize `div` hashSize) - 1
 encKeySize :: Int
 encKeySize = 32
 
-getThreads :: Int
-getThreads = 4
+numThreads :: Int
+numThreads = 4

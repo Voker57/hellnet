@@ -53,7 +53,7 @@ fetchChunks cs = do
 	decoys <- mapM (const genHash) [0..(((length cs) `div` 3) + 1)]
 	let decoys' = decoys \\ cs
 	chunks <- shuffle (cs ++ decoys')
-	let todos = splitFor getThreads chunks
+	let todos = splitFor numThreads chunks
 	workers <- mapM (forkChild) $ map (fetchChunksFromNodes nodes) todos
 	nps <- mapM (takeMVar) workers
 	return ((concat nps) \\ decoys')
@@ -190,7 +190,7 @@ findChunksByMeta encKey m = do
 findHashesByMeta :: Meta -> IO [Hash]
 findHashesByMeta m = do
 	nodes <- shuffle =<< nodesList
-	let nodeSets = splitFor getThreads nodes
+	let nodeSets = splitFor numThreads nodes
 	workers <- mapM (forkChild) $ map (findHashesByMetaFromNodes m) nodeSets
 	ress <- mapM (takeMVar) workers
 	addHashesToMeta m $ (nub . concat) ress

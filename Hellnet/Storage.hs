@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas) where
+module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas) where
 
 import Codec.Utils
 import Control.Monad
@@ -36,8 +36,8 @@ hashAndAppend encKey a b = do
 	bChunk <- insertChunk encKey b
 	return (a ++ bChunk)
 
-insertFileContents :: Maybe Key -> BSL.ByteString -> IO Hash
-insertFileContents encKey bs = do
+insertFileContentsLazy :: Maybe Key -> BSL.ByteString -> IO Hash
+insertFileContentsLazy encKey bs = do
 	let chunks = splitBslFor chunkSize bs
 	chunkHashes <- mapM ((insertChunk encKey) . BSL.unpack) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
@@ -46,6 +46,9 @@ insertFileContents encKey bs = do
 	fileLinkHead <- foldrM (hashAndAppend encKey) [] (fileLinkChunks)
 	fileLinkHash <- insertChunk encKey fileLinkHead
 	return fileLinkHash
+
+insertFileContents :: Maybe Key -> BS.ByteString -> IO Hash
+insertFileContents k b = insertFileContentsLazy k (BSL.pack $ BS.unpack b)
 
 insertChunk :: Maybe Key -> Chunk -> IO Hash
 insertChunk encKey ch
