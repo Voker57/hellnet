@@ -185,7 +185,7 @@ findHashesByMetaFromNodes m nodes = do
 
 findChunksByMeta :: (Maybe Key) -> Meta -> IO [Chunk]
 findChunksByMeta encKey m = do
-	return =<< return . map (BS.unpack) . catMaybes =<< mapM (getChunk encKey) =<< findHashesByMeta m
+	return =<< return . map (BS.unpack) . catMaybes =<< mapM (findChunk encKey) =<< findHashesByMeta m
 
 findHashesByMeta :: Meta -> IO [Hash]
 findHashesByMeta m = do
