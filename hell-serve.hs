@@ -29,5 +29,14 @@ main = do
 	let config = defaultConfig { cnfServerPort = PortNumber port };
 	chunksPath <- toFullPath "store"
 	metaPath <- toFullPath "meta"
-	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath) ]
+	let helloRes = ResourceDef {
+		resUsesNativeThread = False,
+		resIsGreedy = True,
+		resGet = Just $ output "Why, hello",
+		resHead = Nothing,
+		resPost = Nothing,
+		resPut = Nothing,
+		resDelete = Nothing
+		}
+	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath), (["hello"], helloRes) ]
 	runHttpd config resources []
