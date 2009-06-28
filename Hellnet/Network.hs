@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -75,28 +75,19 @@ fetchChunk' s p = do
 
 -- | retrieves chunk using server, returns success status
 fetchChunk :: Node -> Hash -> IO Bool
-fetchChunk s p = do
+fetchChunk node p = do
 	let chunkID = hashToHex p
-	let reqString = "http://" ++ (fst s) ++ ":" ++ (show (snd s)) ++ "/chunks/" ++ (take 2 chunkID) ++ "/" ++ (drop 2 chunkID)
-	let req = simpleHTTP (getRequest reqString)
-	catch (do
-		resp <- req
-		(either
-			(const (return False))
-			(\r -> if (rspCode r) == (2,0,0) then
-				do
-					chID <- Hellnet.Storage.insertChunk Nothing $ BS.unpack $ BS8.pack (rspBody r)
-					if (chID == p) then
-						return True
-						else
-						do
-							Hellnet.Storage.purgeChunk chID
-							return False
-				else
-				return False
-			) resp)
-		)
-		(\ _ -> return False)
+	let reqString = "chunks/" ++ (take 2 chunkID) ++ "/" ++ (drop 2 chunkID)
+	req <- queryNodeGet reqString node
+	maybe (return False)
+		(\r -> do
+			chID <- insertChunk Nothing $ BS.unpack $ BS8.pack r
+			if (chID == p) then
+				return True
+				else do
+					purgeChunk chID
+					return False
+			) req
 
 -- | find file, returns either not found chunks or file in lazy ByteString
 findFile :: Maybe Key -> Hash -> IO (Either [Hash] BSL.ByteString)
@@ -168,15 +159,9 @@ fetchFile' encKey cs = do
 
 findHashesByMetaFromNode :: Meta -> Node -> IO [Hash]
 findHashesByMetaFromNode (Meta key value) node = do
-	let reqString = "http://" ++ (fst node) ++ ":" ++ (show $ snd node)
-		++ "/meta/" ++ key ++ "/" ++ value
-	catch (do
-		rep <- simpleHTTP (getRequest reqString)
-		return $ either (const []) (\rsp -> if (rspCode rsp) == (2,0,0) then
-			splitFor hashSize $ BS.unpack $ BS8.pack $ rspBody rsp
-			else
-			[]) rep
-		) (const $ return [])
+	let reqString = "meta/" ++ key ++ "/" ++ value
+	rep <- queryNodeGet reqString node
+	return $ maybe [] (splitFor hashSize . BS.unpack . BS8.pack) rep
 
 findHashesByMetaFromNodes :: Meta -> [Node] -> IO [Hash]
 findHashesByMetaFromNodes m nodes = do
@@ -195,3 +180,9 @@ findHashesByMeta m = do
 	ress <- mapM (takeMVar) workers
 	addHashesToMeta m $ (nub . concat) ress
 	return =<< getHashesByMeta m
+
+queryNodeGet :: String -> Node -> IO (Maybe String)
+queryNodeGet s node = do
+	let reqString = "http://" ++ (fst node) ++ ":" ++ (show $ snd node) ++ "/" ++ s
+	rep <- ((return . Just) =<< simpleHTTP (getRequest reqString)) `catch` const (return Nothing)
+	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
