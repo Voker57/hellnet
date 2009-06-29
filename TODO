@@ -9,6 +9,7 @@
 Non-trivial
 
  * Active Meta-updating
+ * Protect (more) against connecting to localhost
 
 Slightly harder
 

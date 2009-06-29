@@ -26,7 +26,7 @@ import System.Environment
 handShakeOut = do
 	fD <- inputForm(1000)
 	let fMap = Map.fromList fD
-	if "host" `Map.member` fMap && "port" `Map.member` fMap then do
+	if "host" `Map.member` fMap && "port" `Map.member` fMap && (not $ (Map.findWithDefault "localhost" "host" fMap) `elem` ["localhost","127.0.0.1"]) then do
 		let node = (Map.findWithDefault "" "host" fMap, read (Map.findWithDefault "0" "port" fMap))
 		res <- liftIO $ queryNodeGet "hello" node
 		if res == Nothing then do
