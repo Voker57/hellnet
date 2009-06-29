@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet, addNode) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -45,6 +45,16 @@ readNodesList = readFile =<< toFullPath "nodelist"
 writeNodesList :: [Node] -> IO ()
 writeNodesList ns = do
 	storeFile "nodelist" $ BS8.pack $ show ns
+
+-- | adds node to list if it isn't already there, returns true
+-- | otherwise returns false
+addNode :: Node -> IO Bool
+addNode node = do
+	nL <- nodesList
+	if node `elem` nL then return False
+		else do
+			writeNodesList (node:nL)
+			return True
 
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
 fetchChunks :: [Hash] -> IO [Hash]

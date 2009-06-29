@@ -15,10 +15,27 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+import Control.Monad.Trans
+import qualified Data.Map as Map
 import Hellnet.Storage (toFullPath)
+import Hellnet.Network
 import Network.HTTP.Lucu as Lucu
 import Network
 import System.Environment
+
+handShakeOut = do
+	fD <- inputForm(1000)
+	let fMap = Map.fromList fD
+	if "host" `Map.member` fMap && "port" `Map.member` fMap then do
+		let node = (Map.findWithDefault "" "host" fMap, read (Map.findWithDefault "0" "port" fMap))
+		res <- liftIO $ queryNodeGet "hello" node
+		if res == Nothing then do
+			r <- liftIO $ addNode node
+			if r then output "OK"
+				else output "EXISTS"
+			else output "FAIL"
+		else
+		setStatus NotAcceptable
 
 main = do
 	args <- getArgs
@@ -29,6 +46,15 @@ main = do
 	let config = defaultConfig { cnfServerPort = PortNumber port };
 	chunksPath <- toFullPath "store"
 	metaPath <- toFullPath "meta"
+	let handShakeRes = ResourceDef {
+		resUsesNativeThread = False,
+		resIsGreedy = True,
+		resGet = Just handShakeOut,
+		resHead = Nothing,
+		resPost = Nothing,
+		resPut = Nothing,
+		resDelete = Nothing
+		}
 	let helloRes = ResourceDef {
 		resUsesNativeThread = False,
 		resIsGreedy = True,
