@@ -19,6 +19,7 @@ import Codec.Utils
 import Control.Monad
 import Hellnet
 import Hellnet.Files
+import Hellnet.Meta
 import Hellnet.Storage
 import Hellnet.Utils
 import qualified Data.ByteString as BS

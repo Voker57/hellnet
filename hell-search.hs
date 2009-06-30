@@ -1,3 +1,4 @@
+import Hellnet.Meta
 import Hellnet.Utils
 import Hellnet.Network
 import System.Environment

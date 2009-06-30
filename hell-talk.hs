@@ -3,6 +3,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Hellnet
 import Hellnet.Network
+import Hellnet.Meta
 import Hellnet.Storage
 import System.Environment
 

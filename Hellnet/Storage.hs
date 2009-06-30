@@ -24,6 +24,7 @@ import Data.Foldable hiding (concat)
 import Data.List
 import Data.Maybe
 import Hellnet
+import Hellnet.Meta
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL

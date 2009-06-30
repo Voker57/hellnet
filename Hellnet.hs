@@ -22,8 +22,7 @@ import Codec.Utils
 type Hash = [Octet]
 type Chunk = [Octet]
 type Key = [Octet]
-
-data Meta = Meta String String deriving Show -- key value
+type Node = (String, Int)
 
 hashSize :: Int
 hashSize = 64

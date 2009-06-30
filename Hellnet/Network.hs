@@ -24,6 +24,7 @@ import Data.List
 import Data.Maybe
 import Debug.Trace
 import Hellnet
+import Hellnet.Meta
 import Hellnet.Storage
 import Hellnet.Utils
 import Network.HTTP
@@ -33,8 +34,6 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import Random
 import System.IO.Error
-
-type Node = (String, Int)
 
 nodesList :: IO [Node]
 nodesList = do
@@ -191,9 +190,6 @@ findHashesByMeta m = do
 	ress <- mapM (takeMVar) workers
 	addHashesToMeta m $ (nub . concat) ress
 	return =<< getHashesByMeta m
-
-mkUrl :: Node -> String -> String
-mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
 
 queryNodeGet :: String -> Node -> IO (Maybe String)
 queryNodeGet s node = do
