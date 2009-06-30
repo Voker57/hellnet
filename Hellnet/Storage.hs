@@ -51,6 +51,9 @@ insertFileContentsLazy encKey bs = do
 insertFileContents :: Maybe Key -> BS.ByteString -> IO Hash
 insertFileContents k b = insertFileContentsLazy k (BSL.pack $ BS.unpack b)
 
+insertChunkBS :: Maybe Key -> BS.ByteString -> IO Hash
+insertChunkBS k c = insertChunk k (BS.unpack c)
+
 insertChunk :: Maybe Key -> Chunk -> IO Hash
 insertChunk encKey ch
 	| length ch <= chunkSize = do
