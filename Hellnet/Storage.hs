@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas) where
+module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, getFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas) where
 
 import Codec.Utils
 import Control.Monad

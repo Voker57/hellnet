@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet, addNode) where
+module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet, addNode, handshakeWithNode) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -27,8 +27,9 @@ import Hellnet
 import Hellnet.Storage
 import Hellnet.Utils
 import Network.HTTP
+import Network.HTTP.Base
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8 (pack)
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import Random
 import System.IO.Error
@@ -191,8 +192,26 @@ findHashesByMeta m = do
 	addHashesToMeta m $ (nub . concat) ress
 	return =<< getHashesByMeta m
 
+mkUrl :: Node -> String -> String
+mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
+
 queryNodeGet :: String -> Node -> IO (Maybe String)
 queryNodeGet s node = do
-	let reqString = "http://" ++ (fst node) ++ ":" ++ (show $ snd node) ++ "/" ++ s
-	rep <- ((return . Just) =<< simpleHTTP (getRequest reqString)) `catch` const (return Nothing)
+	rep <- ((return . Just) =<< simpleHTTP (getRequest $ mkUrl node s)) `catch` const (return Nothing)
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
+
+queryNodePost :: String -> [(String, String)] -> Node -> IO (Maybe String)
+queryNodePost s fields node = do
+	let dat = urlEncodeVars fields
+	rep <- ((return . Just) =<< simpleHTTP ((postRequest $ mkUrl node s) {rqBody=dat})) `catch` const (return Nothing)
+	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
+
+handshakeWithNode :: Node -> IO Bool
+handshakeWithNode node = do
+	sP <- getFile "serverport"
+	result <- maybe (return False) (\serverPort -> do
+		res <- queryNodePost "handshake" [("port", BS8.unpack serverPort)] node
+		return $ maybe (False) ((flip elem) ["OK","EXISTS"]) res
+		) sP
+	when result (discard $ addNode node)
+	return result

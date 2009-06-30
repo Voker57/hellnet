@@ -34,5 +34,8 @@ main = do
 				writeNodesList []
 				else if and [((length args) == 1), ((head args) == "list")] then
 					print nodes
-					else
-					putStrLn "Usage: hell-nodes {add,rm,clear,list} <host> <port>"
+					else if and [length args == 3, head args == "handshake"] then do
+						result <- handshakeWithNode (node args)
+						putStrLn $ if result then "Handshake successful" else "Handshake failed"
+						else
+						putStrLn "Usage: hell-nodes {add,rm,clear,list} <host> <port>"

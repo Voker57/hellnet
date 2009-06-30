@@ -17,7 +17,8 @@
 
 import Control.Monad.Trans
 import qualified Data.Map as Map
-import Hellnet.Storage (toFullPath)
+import qualified Data.ByteString.Char8 as BS8
+import Hellnet.Storage
 import Hellnet.Network
 import Network.HTTP.Lucu as Lucu
 import Network
@@ -65,4 +66,5 @@ main = do
 		resDelete = Nothing
 		}
 	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath), (["hello"], helloRes) ]
+	storeFile "serverport" (BS8.pack $ show port)
 	runHttpd config resources []
