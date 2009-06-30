@@ -197,13 +197,18 @@ mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
 
 queryNodeGet :: String -> Node -> IO (Maybe String)
 queryNodeGet s node = do
+	print $ mkUrl node s
 	rep <- ((return . Just) =<< simpleHTTP (getRequest $ mkUrl node s)) `catch` const (return Nothing)
+	print rep
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
 
 queryNodePost :: String -> [(String, String)] -> Node -> IO (Maybe String)
 queryNodePost s fields node = do
 	let dat = urlEncodeVars fields
-	rep <- ((return . Just) =<< simpleHTTP ((postRequest $ mkUrl node s) {rqBody=dat})) `catch` const (return Nothing)
+	let url = mkUrl node s
+	let request = (postRequest url) {rqBody=dat, rqHeaders=[Header HdrContentType "application/x-www-form-urlencoded",
+		Header HdrContentLength $ show $ length dat]}
+	rep <- ((return . Just) =<< simpleHTTP request) `catch` const (return Nothing)
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
 
 handshakeWithNode :: Node -> IO Bool
@@ -213,5 +218,5 @@ handshakeWithNode node = do
 		res <- queryNodePost "handshake" [("port", BS8.unpack serverPort)] node
 		return $ maybe (False) ((flip elem) ["OK","EXISTS"]) res
 		) sP
-	when result (discard $ addNode node)
+	when result (discard =<< addNode node)
 	return result

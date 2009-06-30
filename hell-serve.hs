@@ -26,11 +26,12 @@ import System.Environment
 
 handShakeOut = do
 	fD <- inputForm(1000)
+	host <- getRemoteAddr'
 	let fMap = Map.fromList fD
-	if "host" `Map.member` fMap && "port" `Map.member` fMap && (not $ (Map.findWithDefault "localhost" "host" fMap) `elem` ["localhost","127.0.0.1"]) then do
-		let node = (Map.findWithDefault "" "host" fMap, read (Map.findWithDefault "0" "port" fMap))
+	if "port" `Map.member` fMap && (not $ host `elem` ["localhost","127.0.0.1"]) then do
+		let node = (host, read $ Map.findWithDefault "0" "port" fMap)
 		res <- liftIO $ queryNodeGet "hello" node
-		if res == Nothing then do
+		if res /= Nothing then do
 			r <- liftIO $ addNode node
 			if r then output "OK"
 				else output "EXISTS"
@@ -50,9 +51,9 @@ main = do
 	let handShakeRes = ResourceDef {
 		resUsesNativeThread = False,
 		resIsGreedy = True,
-		resGet = Just handShakeOut,
+		resGet = Nothing,
 		resHead = Nothing,
-		resPost = Nothing,
+		resPost = Just handShakeOut,
 		resPut = Nothing,
 		resDelete = Nothing
 		}
@@ -65,6 +66,6 @@ main = do
 		resPut = Nothing,
 		resDelete = Nothing
 		}
-	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath), (["hello"], helloRes) ]
+	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath), (["hello"], helloRes), (["handshake"], handShakeRes) ]
 	storeFile "serverport" (BS8.pack $ show port)
 	runHttpd config resources []
