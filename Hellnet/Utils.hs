@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, splitOn, forkChild, splitInTwo, processOptions, mkUrl)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode)  where
 
 import Codec.Encryption.AES
 import Codec.Text.Raw
@@ -98,9 +98,6 @@ decryptAES key os = listToOctets $ map (decrypt ((fromOctets 256 key) :: Word256
 encryptAES :: [Octet] -> [Octet] -> [Octet]
 encryptAES key os = listToOctets $ map (encrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os
 
-splitOn :: (Eq a) => a -> [a] -> ([a], [a])
-splitOn x xs = ( (takeWhile (/= x) xs), (dropWhile (/= x) xs) )
-
 forkChild :: IO a -> IO (MVar a)
 forkChild m = do
 	v <- newEmptyMVar
@@ -114,3 +111,6 @@ processOptions def = foldl (flip ($)) def
 
 mkUrl :: Node -> String -> String
 mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
+
+explode :: Char -> String -> [String]
+explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, (safeTail . dropWhile (/=c)) s)) where safeTail l = if null l then [] else tail l

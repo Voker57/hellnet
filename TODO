@@ -4,7 +4,6 @@
 
  * Catch nodelist's parser errors (fails when shit is on nodelist)
  * Make hell-fsck command to check the store for inconsistency
- * Move chunk ops from [Octet] to BS
 
 Non-trivial
 
