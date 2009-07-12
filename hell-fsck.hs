@@ -1,4 +1,5 @@
 import qualified Data.ByteString as BS
+import Hellnet
 import Hellnet.Storage
 import Data.Char
 import Hellnet.Utils
@@ -19,11 +20,14 @@ checkChunk (d, c) = do
 	let hsh = hexToHash (d++c)
 	fp <- toFullPath $ joinPath ["store", d, c]
 	dat <- BS.readFile fp
-	if SHA512.hash (BS.unpack dat) == hsh then
-		return ()
-		else do
-		putStrLn $ "\nHash mismatch in " ++ d ++ c ++ ", removing"
+	if BS.length dat > chunkSize then do
+		putStrLn $ "\nChunk " ++ d ++ c ++" is too big, removing"
 		removeFile fp
+		else if SHA512.hash (BS.unpack dat) == hsh then
+			return ()
+			else do
+			putStrLn $ "\nHash mismatch in " ++ d ++ c ++ ", removing"
+			removeFile fp
 
 main = do
 	putStrLn "Checking store: "
