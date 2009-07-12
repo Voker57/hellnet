@@ -2,7 +2,7 @@
 
 -Trivial- Boring
 
- * Catch nodelist's parser errors (fails when shit is on nodelist)
+ * Find out what the damn exception does read raise and fix nodelist parsing.
 
 Non-trivial
 
@@ -11,7 +11,7 @@ Non-trivial
 
 Slightly harder
 
- * Multiple downloads at time (doen, unchecked)
+ -
 
 Requires more thinking
 
