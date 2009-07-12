@@ -3,7 +3,6 @@
 -Trivial- Boring
 
  * Catch nodelist's parser errors (fails when shit is on nodelist)
- * Make hell-fsck command to check the store for inconsistency
 
 Non-trivial
 
