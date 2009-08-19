@@ -2,19 +2,23 @@
 
 -Trivial- Boring
 
- * Find out what the damn exception does read raise and fix nodelist parsing.
+ -
 
 Non-trivial
 
- * Active Meta-updating
+ * Active Meta-updating (Metamail)
  * Protect (more) against connecting to localhost
 
 Slightly harder
 
- -
+ * Multiple downloads at time (doen, unchecked)
 
 Requires more thinking
 
  * Better meta exchange protocol
  * Other ways of exchanging data than HTTP
  * Digital signatures
+
+Real Massive
+
+ * ECRS' scheme for meta lookups. Probably requires implementation of cross-platform random generator and digital signatures

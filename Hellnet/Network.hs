@@ -20,6 +20,7 @@ module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, find
 import Codec.Utils
 import Control.Concurrent
 import Control.Monad
+import qualified Control.Exception as Ex
 import Data.List
 import Data.Maybe
 import Debug.Trace
@@ -37,10 +38,14 @@ import System.IO.Error
 
 nodesList :: IO [Node]
 nodesList = do
-	listfile <- try readNodesList
-	return (either (const []) (read) listfile)
+	listfile <- getFile =<< toFullPath "nodelist"
+	nodes <- maybe (return Nothing) (safeReadNodelist . BS8.unpack) listfile
+	return $ maybe [] (id) nodes
 
-readNodesList = readFile =<< toFullPath "nodelist"
+safeReadNodelist :: String -> IO (Maybe [Node])
+safeReadNodelist s = do
+	nl <- Ex.try (Ex.evaluate (read s)) :: IO (Either Ex.ErrorCall [Node])
+	return $ either (const Nothing) (Just) nl
 
 writeNodesList :: [Node] -> IO ()
 writeNodesList ns = do
