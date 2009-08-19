@@ -11,11 +11,10 @@ Non-trivial
 
 Slightly harder
 
- * Multiple downloads at time (doen, unchecked)
+ -
 
 Requires more thinking
 
- * Better meta exchange protocol
  * Other ways of exchanging data than HTTP
  * Digital signatures
 
