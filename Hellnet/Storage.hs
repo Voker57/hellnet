@@ -27,6 +27,7 @@ import Hellnet
 import Hellnet.Meta
 import Hellnet.Utils
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import System.Directory
 import System.FilePath
@@ -82,12 +83,18 @@ storeFile fpath dat = do
 	createDirectoryIfMissing True (dropFileName fullPath)
 	BS.writeFile fullPath dat
 
+storeFile' :: [String] -> BS.ByteString -> IO ()
+storeFile' fs = storeFile (joinPath fs)
+
 getFile :: FilePath -> IO (Maybe BS.ByteString)
 getFile fpath = do
 	fullPath <- toFullPath fpath
 	catch (do
 		conts <- BS.readFile fullPath
 		return (Just conts)) (const (return Nothing))
+
+getFile' :: [String] -> IO (Maybe BS.ByteString)
+getFile' fs = getFile (joinPath fs)
 
 purgeChunk :: Hash -> IO ()
 purgeChunk hsh = do
@@ -115,8 +122,20 @@ addHashesToMeta (Meta key value) hs = do
 	let c = fromMaybe BS.empty current
 	let currentList = splitFor hashSize (BS.unpack c)
 	storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)
+	createMetaMail (Meta key value) hs
 
 addHashToMetas :: Hash -> [Meta] -> IO ()
 addHashToMetas h ms = do
 	mapM ((flip addHashesToMeta) [h]) ms
 	return ()
+
+getMetaMail :: Integer -> IO (Maybe MetaMail)
+getMetaMail time = do
+	conts <- getFile' ["metamail", show time]
+	return $ maybe (Nothing) (Just . metaMailFromByteString) conts
+
+createMetaMail :: Meta -> [Hash] -> IO ()
+createMetaMail m hs = do
+	let content = metaMailToByteString (MetaMail m hs)
+	tim <- getUnixTime
+	storeFile' ["metamail",show tim] content

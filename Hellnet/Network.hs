@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, nodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet, addNode, handshakeWithNode) where
+module Hellnet.Network (fetchChunk, fetchChunks, getNodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet, addNode, handshakeWithNode, updateNodeContactTime, getContactLog, writeContactLog) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -23,6 +23,8 @@ import Control.Monad
 import qualified Control.Exception as Ex
 import Data.List
 import Data.Maybe
+import Data.Map (Map(..))
+import qualified Data.Map as Map
 import Debug.Trace
 import Hellnet
 import Hellnet.Meta
@@ -36,16 +38,11 @@ import qualified Data.ByteString.Lazy as BSL
 import Random
 import System.IO.Error
 
-nodesList :: IO [Node]
-nodesList = do
+getNodesList :: IO [Node]
+getNodesList = do
 	listfile <- getFile =<< toFullPath "nodelist"
-	nodes <- maybe (return Nothing) (safeReadNodelist . BS8.unpack) listfile
+	nodes <- maybe (return Nothing) (safeRead . BS8.unpack) listfile
 	return $ maybe [] (id) nodes
-
-safeReadNodelist :: String -> IO (Maybe [Node])
-safeReadNodelist s = do
-	nl <- Ex.try (Ex.evaluate (read s)) :: IO (Either Ex.ErrorCall [Node])
-	return $ either (const Nothing) (Just) nl
 
 writeNodesList :: [Node] -> IO ()
 writeNodesList ns = do
@@ -55,7 +52,7 @@ writeNodesList ns = do
 -- | otherwise returns false
 addNode :: Node -> IO Bool
 addNode node = do
-	nL <- nodesList
+	nL <- getNodesList
 	if node `elem` nL then return False
 		else do
 			writeNodesList (node:nL)
@@ -64,7 +61,7 @@ addNode node = do
 -- | retrieves pieces using servers node list and returns list of pieces that are unavailable.
 fetchChunks :: [Hash] -> IO [Hash]
 fetchChunks cs = do
-	nodes <- nodesList
+	nodes <- getNodesList
 	decoys <- mapM (const genHash) [0..(((length cs) `div` 3) + 1)]
 	let decoys' = decoys \\ cs
 	chunks <- shuffle (cs ++ decoys')
@@ -189,7 +186,7 @@ findChunksByMeta encKey m = do
 
 findHashesByMeta :: Meta -> IO [Hash]
 findHashesByMeta m = do
-	nodes <- shuffle =<< nodesList
+	nodes <- shuffle =<< getNodesList
 	let nodeSets = splitFor numThreads nodes
 	workers <- mapM (forkChild) $ map (findHashesByMetaFromNodes m) nodeSets
 	ress <- mapM (takeMVar) workers
@@ -221,3 +218,17 @@ handshakeWithNode node = do
 		) sP
 	when result (discard =<< addNode node)
 	return result
+
+updateNodeContactTime :: String -> Integer -> IO ()
+updateNodeContactTime hst tim = do
+	tehLog <- getContactLog
+	writeContactLog (Map.insert hst tim tehLog)
+
+getContactLog :: IO (Map String Integer)
+getContactLog = do
+	fil <- getFile "contactlog"
+	res <- maybe (return  Nothing) (safeRead . BS8.unpack) fil
+	return $ maybe (Map.fromList []) (id) res
+
+writeContactLog :: (Map String Integer) -> IO ()
+writeContactLog l = storeFile "contactlog" (BS8.pack $ show l)

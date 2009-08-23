@@ -23,7 +23,7 @@ import System.Environment
 node ss = ( (ss !! 1), (read (ss !! 2)) :: Int )
 
 main = do
-	nodes <- nodesList
+	nodes <- getNodesList
 	evaluate nodes
 	args <- getArgs
 	if and [((length args) == 3), ((head args) == "add")] then
