@@ -19,6 +19,7 @@ import Control.Monad
 import Data.Char (chr)
 import Data.Either
 import Data.List
+import Hellnet
 import Hellnet.Files
 import Hellnet.Network
 import Hellnet.Storage
@@ -26,17 +27,31 @@ import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
+import System.Console.GetOpt
 import System.Directory
 import System.Environment (getArgs)
 import System.IO.Error
+import System.Random
 import Text.Regex.Posix
+
+data Opts = Opts { deintegrateFile :: Bool }
+
+options :: [OptDescr (Opts -> Opts)]
+options = [
+	Option ['d'] ["deintegrate"]
+		(NoArg (\o -> o {deintegrateFile = True}) ) "Remove random chunks of file after fetching (increases deniability, decreases seedability)"
+	]
+
+defaultOptions = Opts { deintegrateFile = False }
 
 main = do
 	args <- getArgs
-	if Prelude.null args then
+	let (optz, argz, errs) = getOpt Permute options args
+	let opts = processOptions defaultOptions optz
+	if Prelude.null argz then
 		Prelude.putStrLn "Usage: hell-get <hell:// url>"
 		else do
-			let arg = head args
+			let arg = head argz
 			let urlRegex = "^hell://(chunk|file)/([a-f0-9]+)(:?/([^/]+))?$"
 			let encryptedUrlRegex = "^hell://(chunk|file)/([a-f0-9]+)\\.([a-f0-9]+)(:?/([^/]+))?$"
 			when (and [(not (arg =~ urlRegex)), (not (arg =~ encryptedUrlRegex))]) (error "Incorrect hell:// url")
@@ -44,7 +59,7 @@ main = do
 			let what = parts !! 1
 			let hsh = hexToHash (parts !! 2)
 			let key = if arg =~ encryptedUrlRegex then Just $ hexToHash $ parts !! 3 else Nothing
-			let fname = if (length args) == 2 then last args
+			let fname = if (length argz) == 2 then last argz
 				else if and [(arg =~ encryptedUrlRegex), (not (null (last parts)))] then
 					last parts
 					else if and [(arg =~ urlRegex), (not (null (last parts)))] then
@@ -56,4 +71,14 @@ main = do
 				maybe (error "Chunk not found in network") (BS.writeFile fname) conts
 				else do
 				fil <- fetchFile key hsh
-				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (downloadFile key fname) fil
+				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (\hs -> do
+					downloadFile key fname hs
+					when (deintegrateFile opts) (do
+						toDelete <- filterM (const $ do
+							rnd <- randomIO :: IO Float
+							return (rnd > 0.8)
+							) hs
+						mapM_ (purgeChunk) toDelete
+						)
+					return ()
+					) fil
