@@ -15,9 +15,8 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, encryptAES, decryptAES, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, safeRead)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, safeRead)  where
 
-import Codec.Encryption.AES
 import Codec.Text.Raw
 import Codec.Utils
 import Control.Concurrent
@@ -94,12 +93,6 @@ genKey = do
 -- | parses command line options, splits flags and args
 simpleOpts :: [String] -> ([String], [String])
 simpleOpts ss = partition ((== '-') . head) ss
-
-decryptAES :: [Octet] -> [Octet] -> [Octet]
-decryptAES key os = listToOctets $ map (decrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os
-
-encryptAES :: [Octet] -> [Octet] -> [Octet]
-encryptAES key os = listToOctets $ map (encrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os
 
 forkChild :: IO a -> IO (MVar a)
 forkChild m = do

@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, getFile, hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas) where
+module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas, generateAndUseKeyPair) where
 
 import Codec.Utils
 import Control.Monad
@@ -24,13 +24,16 @@ import Data.Foldable hiding (concat)
 import Data.List
 import Data.Maybe
 import Hellnet
+import Hellnet.Crypto
 import Hellnet.Meta
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
+import OpenSSL.DSA
 import System.Directory
 import System.FilePath
+import System.Posix.Files
 
 hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
 hashAndAppend _ a [] = do return a
@@ -139,3 +142,13 @@ createMetaMail m hs = do
 	let content = metaMailToByteString (MetaMail m hs)
 	tim <- getUnixTime
 	storeFile' ["metamail",show tim] content
+
+generateAndUseKeyPair :: IO ()
+generateAndUseKeyPair = do
+	let (/\) = unionFileModes
+	kp <- generateKeyPair
+	publicPath <- toFullPath "public.dsa"
+	privatePath <- toFullPath "private.dsa"
+	storeFile privatePath $ BS8.pack $ show $ dsaKeyPairToTuple kp
+	setFileMode privatePath (ownerReadMode /\ ownerWriteMode /\ nullFileMode)
+	storeFile publicPath $ BS8.pack $ show $ dsaPubKeyToTuple kp

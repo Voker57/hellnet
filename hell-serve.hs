@@ -16,7 +16,9 @@
 --------------------------------------------------------------------------------
 
 import Control.Monad.Trans
+import Control.Monad
 import qualified Data.Map as Map
+import Data.Maybe
 import qualified Data.ByteString.Char8 as BS8
 import Hellnet.Storage
 import Hellnet.Network
@@ -46,8 +48,13 @@ main = do
 		else
 		fromIntegral (read (head args) :: Int) :: PortNumber
 	let config = defaultConfig { cnfServerPort = PortNumber port };
+	publicKey <- getFile "public.dsa"
+	when (isNothing publicKey) (do
+		putStrLn "Generating keypair, please wait"
+		generateAndUseKeyPair)
 	chunksPath <- toFullPath "store"
 	metaPath <- toFullPath "meta"
+	publicPath <- toFullPath "public.dsa"
 	let handShakeRes = ResourceDef {
 		resUsesNativeThread = False,
 		resIsGreedy = True,
@@ -66,6 +73,13 @@ main = do
 		resPut = Nothing,
 		resDelete = Nothing
 		}
-	let resources = mkResTree [ (["chunks"], staticDir chunksPath), (["meta"], staticDir metaPath), (["hello"], helloRes), (["handshake"], handShakeRes) ]
+	let resources = mkResTree [
+		(["chunks"], staticDir chunksPath)
+		,(["meta"], staticDir metaPath)
+		,(["hello"], helloRes)
+		,(["handshake"], handShakeRes)
+		,(["public.dsa"], staticFile publicPath)
+		]
 	storeFile "serverport" (BS8.pack $ show port)
+	putStrLn $ "Listening on port " ++ show port
 	runHttpd config resources []
