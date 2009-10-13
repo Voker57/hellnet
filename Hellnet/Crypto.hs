@@ -18,3 +18,6 @@ encryptAES key os = listToOctets $ map (encrypt ((fromOctets 256 key) :: Word256
 
 generateKeyPair :: IO DSAKeyPair
 generateKeyPair = withOpenSSL $ generateDSAParametersAndKey 2048 Nothing
+
+keyPairFingerprint :: DSAKeyPair -> [Octet]
+keyPairFingerprint = undefined

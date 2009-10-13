@@ -2,12 +2,14 @@
 
 -Trivial- Boring
 
- -
+ * Out-of-store file insertion
+ * Directory locking
 
 Non-trivial
 
  * Active Meta-updating (Metamail)
  * Protect (more) against connecting to localhost
+ * Logging
 
 Slightly harder
 
