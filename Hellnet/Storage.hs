@@ -113,36 +113,6 @@ isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
 
-getHashesByMeta :: Meta -> IO [Hash]
-getHashesByMeta (Meta key value) = do
-	let [k,v] = map (dropWhile (=='/')) [key,value]
-	conts <- getFile $ joinPath ["meta",k,v]
-	return $ maybe [] ((splitFor hashSize) . BS.unpack) conts
-
-addHashesToMeta :: Meta -> [Hash] -> IO ()
-addHashesToMeta (Meta key value) hs = do
-	current <- getFile (joinPath ["meta",key,value])
-	let c = fromMaybe BS.empty current
-	let currentList = splitFor hashSize (BS.unpack c)
-	storeFile (joinPath ["meta",key,value]) $ BS.pack $ concat $ nub (currentList ++ hs)
-	createMetaMail (Meta key value) hs
-
-addHashToMetas :: Hash -> [Meta] -> IO ()
-addHashToMetas h ms = do
-	mapM ((flip addHashesToMeta) [h]) ms
-	return ()
-
-getMetaMail :: Integer -> IO (Maybe MetaMail)
-getMetaMail time = do
-	conts <- getFile' ["metamail", show time]
-	return $ maybe (Nothing) (Just . metaMailFromByteString) conts
-
-createMetaMail :: Meta -> [Hash] -> IO ()
-createMetaMail m hs = do
-	let content = metaMailToByteString (MetaMail m hs)
-	tim <- getUnixTime
-	storeFile' ["metamail",show tim] content
-
 generateAndUseKeyPair :: IO ()
 generateAndUseKeyPair = do
 	let (/\) = unionFileModes

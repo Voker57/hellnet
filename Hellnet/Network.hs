@@ -169,30 +169,6 @@ fetchFile' encKey cs = do
 			else
 			return (Right chs)
 
-findHashesByMetaFromNode :: Meta -> Node -> IO [Hash]
-findHashesByMetaFromNode (Meta key value) node = do
-	let reqString = "meta/" ++ key ++ "/" ++ value
-	rep <- queryNodeGet reqString node
-	return $ maybe [] (splitFor hashSize . BS.unpack . BS8.pack) rep
-
-findHashesByMetaFromNodes :: Meta -> [Node] -> IO [Hash]
-findHashesByMetaFromNodes m nodes = do
-	hs <- mapM (findHashesByMetaFromNode m) nodes
-	return $ nub $ concat hs
-
-findChunksByMeta :: (Maybe Key) -> Meta -> IO [Chunk]
-findChunksByMeta encKey m = do
-	return =<< return . map (BS.unpack) . catMaybes =<< mapM (findChunk encKey) =<< findHashesByMeta m
-
-findHashesByMeta :: Meta -> IO [Hash]
-findHashesByMeta m = do
-	nodes <- shuffle =<< getNodesList
-	let nodeSets = splitFor numThreads nodes
-	workers <- mapM (forkChild) $ map (findHashesByMetaFromNodes m) nodeSets
-	ress <- mapM (takeMVar) workers
-	addHashesToMeta m $ (nub . concat) ress
-	return =<< getHashesByMeta m
-
 queryNodeGet :: String -> Node -> IO (Maybe String)
 queryNodeGet s node = do
 	print $ mkUrl node s
