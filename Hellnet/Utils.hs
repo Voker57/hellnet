@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, safeRead)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, safeRead, safeTail)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -109,7 +109,7 @@ mkUrl :: Node -> String -> String
 mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
 
 explode :: Char -> String -> [String]
-explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, (safeTail . dropWhile (/=c)) s)) where safeTail l = if null l then [] else tail l
+explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, (safeTail . dropWhile (/=c)) s))
 
 getUnixTime :: IO Integer
 getUnixTime = do
@@ -118,3 +118,6 @@ getUnixTime = do
 
 safeRead :: (Read a) => String -> IO (Maybe a)
 safeRead s = Ex.catch (Ex.evaluate (read s)) (\(Ex.ErrorCall _) -> return Nothing)
+
+safeTail :: [a] -> [a]
+safeTail l = if null l then [] else tail l
