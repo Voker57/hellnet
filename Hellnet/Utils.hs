@@ -85,6 +85,7 @@ genHash = do
 discard :: a -> IO ()
 discard _ = return ()
 
+-- | generates random encryption key
 genKey :: IO Key
 genKey = do
 	gen <- newStdGen
@@ -100,24 +101,31 @@ forkChild m = do
 	forkIO $ putMVar v =<< m
 	return v
 
+-- | Splits string in two by certain char
 splitInTwo :: Char -> String -> (String, String)
 splitInTwo c s = let broken = break (== c) s in ((fst broken), (tail $ snd broken))
 
+-- | handy func for optParse
 processOptions def = foldl (flip ($)) def
 
+-- | Makes URI for node
 mkUrl :: Node -> String -> String
 mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
 
+-- | Good old explode()
 explode :: Char -> String -> [String]
 explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, (safeTail . dropWhile (/=c)) s))
 
+-- | Get current UNIX time
 getUnixTime :: IO Integer
 getUnixTime = do
 	tim <- getCurrentTime
 	return $ read $ formatTime defaultTimeLocale "%s" tim
 
+-- | read without exceptions
 safeRead :: (Read a) => String -> IO (Maybe a)
 safeRead s = Ex.catch (Ex.evaluate (read s)) (\(Ex.ErrorCall _) -> return Nothing)
 
+-- | tail that returns empty list if input is empty
 safeTail :: [a] -> [a]
 safeTail l = if null l then [] else tail l
