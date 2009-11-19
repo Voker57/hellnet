@@ -124,7 +124,7 @@ getUnixTime = do
 
 -- | read without exceptions
 safeRead :: (Read a) => String -> IO (Maybe a)
-safeRead s = Ex.catch (Ex.evaluate (read s)) (\(Ex.ErrorCall _) -> return Nothing)
+safeRead s = Ex.catch (readIO s) (\(Ex.ErrorCall _) -> return Nothing)
 
 -- | tail that returns empty list if input is empty
 safeTail :: [a] -> [a]
