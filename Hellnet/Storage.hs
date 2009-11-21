@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored, getHashesByMeta, addHashesToMeta, addHashToMetas, generateAndUseKeyPair) where
+module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored, generateAndUseKeyPair) where
 
 import Codec.Utils
 import Control.Monad
@@ -25,7 +25,6 @@ import Data.List
 import Data.Maybe
 import Hellnet
 import Hellnet.Crypto
-import Hellnet.Meta
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8

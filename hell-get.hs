@@ -23,6 +23,7 @@ import Hellnet
 import Hellnet.Files
 import Hellnet.Network
 import Hellnet.Storage
+import Hellnet.URI
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
@@ -55,6 +56,7 @@ main = do
 			let urlRegex = "^hell://(chunk|file)/([a-f0-9]+)(:?/([^/]+))?$"
 			let encryptedUrlRegex = "^hell://(chunk|file)/([a-f0-9]+)\\.([a-f0-9]+)(:?/([^/]+))?$"
 			when (and [(not (arg =~ urlRegex)), (not (arg =~ encryptedUrlRegex))]) (error "Incorrect hell:// url")
+			let uri = parseHellnetURI $ head argz
 			let parts = head (if arg =~ urlRegex then arg =~ urlRegex else arg =~ encryptedUrlRegex) :: [String]
 			let what = parts !! 1
 			let hsh = hexToHash (parts !! 2)

@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, getNodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, findHashesByMetaFromNode, findHashesByMetaFromNodes, findChunksByMeta, findHashesByMeta, queryNodeGet, addNode, handshakeWithNode, updateNodeContactTime, getContactLog, writeContactLog) where
+module Hellnet.Network (fetchChunk, fetchChunks, getNodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, queryNodeGet, addNode, handshakeWithNode, updateNodeContactTime, getContactLog, writeContactLog) where
 
 import Codec.Utils
 import Control.Concurrent
