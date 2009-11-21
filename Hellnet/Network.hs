@@ -36,12 +36,13 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import Random
+import Safe
 import System.IO.Error
 
 getNodesList :: IO [Node]
 getNodesList = do
 	listfile <- getFile =<< toFullPath "nodelist"
-	nodes <- maybe (return Nothing) (safeRead . BS8.unpack) listfile
+	let nodes = maybe (Nothing) (readMay . BS8.unpack) listfile
 	return $ maybe [] (id) nodes
 
 writeNodesList :: [Node] -> IO ()
@@ -203,7 +204,7 @@ updateNodeContactTime hst tim = do
 getContactLog :: IO (Map String Integer)
 getContactLog = do
 	fil <- getFile "contactlog"
-	res <- maybe (return  Nothing) (safeRead . BS8.unpack) fil
+	let res = maybe (Nothing) (readMay . BS8.unpack) fil
 	return $ maybe (Map.fromList []) (id) res
 
 writeContactLog :: (Map String Integer) -> IO ()

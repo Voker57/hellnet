@@ -56,16 +56,16 @@ parseHellnetURI s = let
 
 parseHellnetURI' :: URI -> Maybe HellnetURI
 parseHellnetURI' u = let
-	params = either (const []) (id) $ parse urlEncoded "user URI" (safeTail $ uriQuery u) in
+	params = either (const []) (id) $ parse urlEncoded "user URI" (tailSafe $ uriQuery u) in
 		if uriScheme u == "hell:" && isJust (uriAuthority u) then
 			let key = maybe (Nothing) (Just . hexToHash) $ lookup "key" params;
 				fname = lookup "name" params in
 					case uriRegName $ fromJust (uriAuthority u) of
-						"chunk" -> let hsh = hexToHash $ safeTail $ uriPath u in
+						"chunk" -> let hsh = hexToHash $ tailSafe $ uriPath u in
 								Just $ ChunkURI hsh key fname
-						"file" -> let hsh = hexToHash $ safeTail $ uriPath u in
+						"file" -> let hsh = hexToHash $ tailSafe $ uriPath u in
 								Just $ FileURI hsh key fname
-						"meta" -> let splitPath = explode '/' $ safeTail $ uriPath u in
+						"meta" -> let splitPath = explode '/' $ tailSafe $ uriPath u in
 							if length splitPath < 2 then Nothing
 								else
 								let keyId = hexToHash $ head splitPath;

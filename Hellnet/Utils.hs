@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, safeRead, safeTail)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -32,6 +32,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString.Lazy as BSL
 import Random
+import Safe
 import System.Locale
 import Text.PrettyPrint.HughesPJ (render)
 
@@ -114,18 +115,10 @@ mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
 
 -- | Good old explode()
 explode :: Char -> String -> [String]
-explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, (safeTail . dropWhile (/=c)) s))
+explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, (tailSafe . dropWhile (/=c)) s))
 
 -- | Get current UNIX time
 getUnixTime :: IO Integer
 getUnixTime = do
 	tim <- getCurrentTime
 	return $ read $ formatTime defaultTimeLocale "%s" tim
-
--- | read without exceptions
-safeRead :: (Read a) => String -> IO (Maybe a)
-safeRead s = Ex.catch (readIO s) (\(Ex.ErrorCall _) -> return Nothing)
-
--- | tail that returns empty list if input is empty
-safeTail :: [a] -> [a]
-safeTail l = if null l then [] else tail l
