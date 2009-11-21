@@ -23,6 +23,8 @@ type Hash = [Octet]
 type Chunk = [Octet]
 type Key = [Octet]
 type Node = (String, Int)
+type NodeID = Hash
+type KeyID = Hash
 
 hashSize :: Int
 hashSize = 64

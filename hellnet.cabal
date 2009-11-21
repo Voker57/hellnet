@@ -12,7 +12,7 @@ library
   Hellnet.Storage
   Hellnet.Network
   Hellnet.Meta
- Build-Depends: base, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, jpath >= 0.1
+ Build-Depends: base, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, jpath >= 0.1, safe >= 0.2
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
