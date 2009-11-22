@@ -27,7 +27,6 @@ import Data.Map (Map(..))
 import qualified Data.Map as Map
 import Debug.Trace
 import Hellnet
-import Hellnet.Meta
 import Hellnet.Storage
 import Hellnet.Utils
 import Network.HTTP

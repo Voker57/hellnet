@@ -11,8 +11,8 @@ library
   Hellnet.Utils
   Hellnet.Storage
   Hellnet.Network
-  Hellnet.Meta
- Build-Depends: base, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, jpath >= 0.1, safe >= 0.2
+  Hellnet.URI
+ Build-Depends: base, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, jpath >= 0.1, safe >= 0.2, old-locale, time, unix, parsec, random
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
@@ -25,9 +25,3 @@ Executable hell-nodes
 Executable hell-serve
  Main-is: hell-serve.hs
  Build-depends: Lucu >0.3, network, mtl, containers
-Executable hell-search
- Main-is: hell-search.hs
- Build-depends: base
-Executable hell-talk
- Main-is: hell-talk.hs
- Build-depends: base

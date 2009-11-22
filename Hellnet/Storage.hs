@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored, generateAndUseKeyPair) where
+module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored) where
 
 import Codec.Utils
 import Control.Monad
@@ -29,7 +29,7 @@ import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
-import OpenSSL.DSA
+-- import OpenSSL.DSA
 import System.Directory
 import System.FilePath
 import System.Posix.Files
@@ -111,13 +111,3 @@ isStored :: Hash -> IO Bool
 isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
-
-generateAndUseKeyPair :: IO ()
-generateAndUseKeyPair = do
-	let (/\) = unionFileModes
-	kp <- generateKeyPair
-	publicPath <- toFullPath "public.dsa"
-	privatePath <- toFullPath "private.dsa"
-	storeFile privatePath $ BS8.pack $ show $ dsaKeyPairToTuple kp
-	setFileMode privatePath (ownerReadMode /\ ownerWriteMode /\ nullFileMode)
-	storeFile publicPath $ BS8.pack $ show $ dsaPubKeyToTuple kp

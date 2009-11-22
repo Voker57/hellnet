@@ -48,12 +48,7 @@ main = do
 		else
 		fromIntegral (read (head args) :: Int) :: PortNumber
 	let config = defaultConfig { cnfServerPort = PortNumber port };
-	publicKey <- getFile "public.dsa"
-	when (isNothing publicKey) (do
-		putStrLn "Generating keypair, please wait"
-		generateAndUseKeyPair)
 	chunksPath <- toFullPath "store"
-	metaPath <- toFullPath "meta"
 	publicPath <- toFullPath "public.dsa"
 	let handShakeRes = ResourceDef {
 		resUsesNativeThread = False,
@@ -75,10 +70,8 @@ main = do
 		}
 	let resources = mkResTree [
 		(["chunks"], staticDir chunksPath)
-		,(["meta"], staticDir metaPath)
 		,(["hello"], helloRes)
 		,(["handshake"], handShakeRes)
-		,(["public.dsa"], staticFile publicPath)
 		]
 	storeFile "serverport" (BS8.pack $ show port)
 	putStrLn $ "Listening on port " ++ show port
