@@ -33,7 +33,6 @@ import System.Directory
 import System.Environment (getArgs)
 import System.IO.Error
 import System.Random
-import Text.Regex.Posix
 
 data Opts = Opts { deintegrateFile :: Bool }
 
@@ -50,31 +49,20 @@ main = do
 	let (optz, argz, errs) = getOpt Permute options args
 	let opts = processOptions defaultOptions optz
 	if Prelude.null argz then
-		Prelude.putStrLn "Usage: hell-get <hell:// url>"
+		Prelude.putStrLn "Usage: hell-get <hell:// uri>"
 		else do
-			let arg = head argz
-			let urlRegex = "^hell://(chunk|file)/([a-f0-9]+)(:?/([^/]+))?$"
-			let encryptedUrlRegex = "^hell://(chunk|file)/([a-f0-9]+)\\.([a-f0-9]+)(:?/([^/]+))?$"
-			when (and [(not (arg =~ urlRegex)), (not (arg =~ encryptedUrlRegex))]) (error "Incorrect hell:// url")
 			let uri = parseHellnetURI $ head argz
-			let parts = head (if arg =~ urlRegex then arg =~ urlRegex else arg =~ encryptedUrlRegex) :: [String]
-			let what = parts !! 1
-			let hsh = hexToHash (parts !! 2)
-			let key = if arg =~ encryptedUrlRegex then Just $ hexToHash $ parts !! 3 else Nothing
-			let fname = if (length argz) == 2 then last argz
-				else if and [(arg =~ encryptedUrlRegex), (not (null (last parts)))] then
-					last parts
-					else if and [(arg =~ urlRegex), (not (null (last parts)))] then
-						last parts
-						else "/dev/stdout"
-			if (what == "chunk") then do
-				let getConts = findChunk key hsh
-				conts <- getConts
-				maybe (error "Chunk not found in network") (BS.writeFile fname) conts
-				else do
-				fil <- fetchFile key hsh
-				either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (\hs -> do
-					downloadFile key fname hs
+			case uri of
+				Nothing -> fail "Incorrect URI"
+				Just (ChunkURI hsh key fname) -> do
+					let filename = maybe "/dev/stdout" (id) fname
+					conts <- findChunk key hsh
+					maybe (fail "Chunk not found in network") (BS.writeFile filename) conts
+				Just (FileURI hsh key fname) -> do
+					let filename = maybe "/dev/stdout" (id) fname
+					fil <- fetchFile key hsh
+					either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (\hs -> do
+					downloadFile key filename hs
 					when (deintegrateFile opts) (do
 						toDelete <- filterM (const $ do
 							rnd <- randomIO :: IO Float
@@ -84,3 +72,4 @@ main = do
 						)
 					return ()
 					) fil
+				otherwise -> fail "URI type not implemented yet"
