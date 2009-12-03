@@ -16,8 +16,6 @@
 --------------------------------------------------------------------------------
 
 import Control.Monad
-import Data.Char (chr)
-import Data.Either
 import Data.List
 import Hellnet
 import Hellnet.Files

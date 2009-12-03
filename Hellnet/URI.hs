@@ -4,10 +4,10 @@ import Data.List
 import Data.Maybe
 import Hellnet
 import Hellnet.Utils
-import Network.URI
 import Safe
 import Text.ParserCombinators.Parsec
 import Text.Show
+import Text.URI
 
 data HellnetURI =
 	ChunkURI Hash -- ^ Chunk hash
@@ -26,26 +26,23 @@ data HellnetURI =
 instance Show HellnetURI where
 	show u = show uri where
 		uri = case u of
-			(ChunkURI hsh key fname) -> URI {
-				uriScheme = "hell:"
-				, uriAuthority = Just URIAuth { uriUserInfo = "", uriPort = "", uriRegName = "//chunk" }
+			(ChunkURI hsh key fname) -> nullURI {
+				uriScheme = Just "hell"
+				, uriRegName = Just "chunk"
 				, uriPath = "/" ++ hashToHex hsh
-				, uriQuery = queryFromPairs ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name")
-				, uriFragment = ""
+				, uriQuery = Just $ pairsToQuery ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name")
 				}
-			(FileURI hsh key fname) -> URI {
-				uriScheme = "hell:"
-				, uriAuthority = Just URIAuth { uriUserInfo = "", uriPort = "", uriRegName = "//chunk" }
+			(FileURI hsh key fname) -> nullURI {
+				uriScheme = Just "hell"
+				, uriRegName = Just "chunk"
 				, uriPath = "/" ++ hashToHex hsh
-				, uriQuery = queryFromPairs $ [] ++ maybeToPairs key (hashToHex) "key" ++ maybeToPairs fname (id) "name"
-				, uriFragment = ""
+				, uriQuery = Just $ pairsToQuery $ [] ++ maybeToPairs key (hashToHex) "key" ++ maybeToPairs fname (id) "name"
 				}
-			(MetaURI kid mname mpath key fname) -> URI {
-				uriScheme = "hell:"
-				, uriAuthority = Just URIAuth { uriUserInfo = "", uriPort = "", uriRegName = "//meta" }
+			(MetaURI kid mname mpath key fname) -> nullURI {
+				uriScheme = Just "hell"
+				, uriRegName = Just "meta"
 				, uriPath = "/" ++ intercalate "/" [hashToHex kid, mname, mpath]
-				, uriQuery = queryFromPairs $ [] ++ maybeToPairs key (hashToHex) "key" ++ maybeToPairs fname (id) "name"
-				, uriFragment = ""
+				, uriQuery = Just $ pairsToQuery $ [] ++ maybeToPairs key (hashToHex) "key" ++ maybeToPairs fname (id) "name"
 				}
 	showList = showListWith (const show)
 
@@ -56,11 +53,11 @@ parseHellnetURI s = let
 
 parseHellnetURI' :: URI -> Maybe HellnetURI
 parseHellnetURI' u = let
-	params = either (const []) (id) $ parse urlEncoded "user URI" (tailSafe $ uriQuery u) in
-		if uriScheme u == "hell:" && isJust (uriAuthority u) then
+	params = uriQueryItems u in
+		if uriScheme u == Just "hell" then
 			let key = maybe (Nothing) (Just . hexToHash) $ lookup "key" params;
 				fname = lookup "name" params in
-					case uriRegName $ fromJust (uriAuthority u) of
+					case fromMaybe "" (uriRegName u) of
 						"chunk" -> let hsh = hexToHash $ tailSafe $ uriPath u in
 								Just $ ChunkURI hsh key fname
 						"file" -> let hsh = hexToHash $ tailSafe $ uriPath u in
@@ -72,24 +69,11 @@ parseHellnetURI' u = let
 									metaName = splitPath !! 1;
 									metaPath = intercalate "/" $ drop 2 splitPath in
 										Just $ MetaURI keyId metaName metaPath key fname
+						otherwise -> Nothing
 			else Nothing
-
--- Really simple query pairs' parser, because urlencoded sucks balls
-
-urlEncoded = encPair `sepBy` char '&'
-
-encPair = do
-	first <- manyTill anyChar (char '=')
-	second <- many anyChar
-	return (first, second)
-
--- constructing queries
-
-queryFromPairs :: [(String, String)] -> String
-queryFromPairs xs = "?" ++ initSafe (foldl (\s p -> s ++ fst p ++ "=" ++ snd p ++ "&") "" xs)
 
 -- this is for constructing pairlists from maybes
 maybeToPairs :: Maybe a -> (a -> String) -> String -> [(String, String)]
 maybeToPairs a f name = maybe ([]) (\x -> [(uriescape name, uriescape (f x))]) a
 
-uriescape = escapeURIString (isUnescapedInURI)
+uriescape = escapeString (okInQuery)
