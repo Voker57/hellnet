@@ -20,6 +20,7 @@ import Control.Monad
 import Hellnet
 import Hellnet.Files
 import Hellnet.Storage
+import Hellnet.URI
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
@@ -47,7 +48,8 @@ insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
 insertFilePrintHash encKey fname = do
 	let filename = last (splitPath fname)
 	hsh <- insertFile encKey fname
-	maybe (putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://file/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+	let url = FileURI hsh encKey (Just fname)
+	putStrLn $ show url
 
 insertChunkPrintHash :: Maybe [Octet] -> FilePath -> IO ()
 insertChunkPrintHash encKey fname = do
@@ -55,7 +57,8 @@ insertChunkPrintHash encKey fname = do
 	dat <- BS.readFile fname
 	when (BS.length dat > chunkSize) (fail $ "Too large to insert as chunk: " ++ fname)
 	hsh <- insertChunk encKey (BS.unpack dat)
-	maybe (putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "/" ++ filename )) (\k -> putStrLn (fname ++ ": hell://chunk/" ++ (hashToHex hsh) ++ "." ++ (hashToHex k) ++ "/" ++ filename)) encKey
+	let url = ChunkURI hsh encKey (Just fname)
+	putStrLn $ show url
 
 main = do
 	args <- getArgs
