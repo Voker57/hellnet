@@ -37,6 +37,8 @@ import qualified Data.ByteString.Lazy as BSL
 import Random
 import Safe
 import System.IO.Error
+import Text.JSON
+import Text.JSON.JPath
 
 getNodesList :: IO [Node]
 getNodesList = do
@@ -208,3 +210,11 @@ getContactLog = do
 
 writeContactLog :: (Map String Integer) -> IO ()
 writeContactLog l = storeFile "contactlog" (BS8.pack $ show l)
+
+getMeta :: KeyID -> String -> String -> IO (Maybe [JSValue])
+getMeta keyId mName mPath = do
+	mFile <- getFile' ["meta", hashToHex keyId, mName]
+	maybe (return Nothing) (\bf -> do
+		let result = jPath mPath (BS8.unpack bf)
+		return $ either (const Nothing) (Just) result
+		) mFile
