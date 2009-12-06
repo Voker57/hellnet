@@ -18,6 +18,7 @@
 module Hellnet where
 
 import Codec.Utils
+import qualified Data.ByteString as BS
 
 type Hash = [Octet]
 type Chunk = [Octet]
@@ -25,6 +26,7 @@ type Key = [Octet]
 type Node = (String, Int)
 type NodeID = Hash
 type KeyID = Hash
+type Signature = BS.ByteString
 
 hashSize :: Int
 hashSize = 64

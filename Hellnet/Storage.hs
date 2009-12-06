@@ -33,6 +33,8 @@ import qualified Data.ByteString.Lazy as BSL
 import System.Directory
 import System.FilePath
 import System.Posix.Files
+import Text.JSON.JPath
+import Text.RJson
 
 hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
 hashAndAppend _ a [] = do return a
@@ -111,3 +113,11 @@ isStored :: Hash -> IO Bool
 isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
+
+getMeta :: KeyID -> String -> String -> IO (Maybe [JsonData])
+getMeta keyId mName mPath = do
+	mFile <- getFile' ["meta", hashToHex keyId, mName]
+	maybe (return Nothing) (\bf -> do
+		let result = jPath mPath (BS8.unpack bf)
+		return $ either (const Nothing) (Just) result
+		) mFile

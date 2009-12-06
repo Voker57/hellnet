@@ -2,8 +2,9 @@
 
 -Trivial- Boring
 
- * Out-of-store file insertion
+ * -Out-of-store file insertion-
  * Directory locking
+ * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
 
 Non-trivial
 

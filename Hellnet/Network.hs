@@ -27,6 +27,7 @@ import Data.Map (Map(..))
 import qualified Data.Map as Map
 import Debug.Trace
 import Hellnet
+import Hellnet.Meta
 import Hellnet.Storage
 import Hellnet.Utils
 import Network.HTTP
@@ -211,10 +212,12 @@ getContactLog = do
 writeContactLog :: (Map String Integer) -> IO ()
 writeContactLog l = storeFile "contactlog" (BS8.pack $ show l)
 
-getMeta :: KeyID -> String -> String -> IO (Maybe [JSValue])
-getMeta keyId mName mPath = do
-	mFile <- getFile' ["meta", hashToHex keyId, mName]
-	maybe (return Nothing) (\bf -> do
-		let result = jPath mPath (BS8.unpack bf)
-		return $ either (const Nothing) (Just) result
-		) mFile
+-- fetchMeta :: KeyID -> String -> IO Bool
+-- fetchMeta keyId mName =
+--
+-- fetchMetaFromNode :: KeyID -> String -> Node -> IO (Maybe Meta)
+-- fetchMetaFromNode keyId mName node = do
+-- 	result <- queryNodeGet $ intercalate "/" ["meta", hashToHex keyId, mName]
+-- 	maybe (return Nothing) (\s -> do
+--
+-- 		)
