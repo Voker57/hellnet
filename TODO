@@ -5,6 +5,7 @@
  * -Out-of-store file insertion-
  * Directory locking
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
+ * Sizes!
 
 Non-trivial
 
