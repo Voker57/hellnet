@@ -27,6 +27,7 @@ import Hellnet
 import Hellnet.Crypto
 import Hellnet.Utils
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.UTF8 as BU
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 -- import OpenSSL.DSA
@@ -34,7 +35,7 @@ import System.Directory
 import System.FilePath
 import System.Posix.Files
 import Text.JSON.JPath
-import Text.RJson
+import Text.HJson
 
 hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
 hashAndAppend _ a [] = do return a
@@ -114,10 +115,10 @@ isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
 
-getMeta :: KeyID -> String -> String -> IO (Maybe [JsonData])
+getMeta :: KeyID -> String -> String -> IO (Maybe [Json])
 getMeta keyId mName mPath = do
 	mFile <- getFile' ["meta", hashToHex keyId, mName]
 	maybe (return Nothing) (\bf -> do
-		let result = jPath mPath (BS8.unpack bf)
+		let result = jPath mPath (BU.toString bf)
 		return $ either (const Nothing) (Just) result
 		) mFile
