@@ -30,19 +30,19 @@ instance Show HellnetURI where
 				uriScheme = Just "hell"
 				, uriRegName = Just "chunk"
 				, uriPath = "/" ++ hashToHex hsh
-				, uriQuery = Just $ pairsToQuery ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name")
+				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 			(FileURI hsh key fname) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "chunk"
 				, uriPath = "/" ++ hashToHex hsh
-				, uriQuery = Just $ pairsToQuery $ [] ++ maybeToPairs key (hashToHex) "key" ++ maybeToPairs fname (id) "name"
+				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 			(MetaURI kid mname mpath key fname) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "meta"
 				, uriPath = "/" ++ intercalate "/" [hashToHex kid, mname, mpath]
-				, uriQuery = Just $ pairsToQuery $ [] ++ maybeToPairs key (hashToHex) "key" ++ maybeToPairs fname (id) "name"
+				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 	showList = showListWith (const show)
 
