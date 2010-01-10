@@ -115,10 +115,20 @@ isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
 
-getMeta :: KeyID -> String -> String -> IO (Maybe [Json])
+getMeta :: KeyID -- ^ public key ID
+	-> String -- ^ Meta name
+	-> String -- ^ Meta JPath
+	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
 getMeta keyId mName mPath = do
 	mFile <- getFile' ["meta", hashToHex keyId, mName]
 	maybe (return Nothing) (\bf -> do
-		let result = jPath mPath (BU.toString bf)
+		let result = jPath mPath (BU.toString $ fst $ BS.breakSubstring (BS8.pack "\n\n") bf)
 		return $ either (const Nothing) (Just) result
 		) mFile
+
+modifyMeta :: KeyID -- ^ public key ID
+	-> String -- ^ Meta name
+	-> String -- ^ Meta JPath
+	-> (Json -> Json) -- ^ JSON modifier function
+	-> Bool -- Whether meta was successfully modified
+modifyMeta = undefined

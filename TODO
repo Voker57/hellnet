@@ -1,5 +1,14 @@
 == Tasks.
 
+Meta, uh
+ * h
+
+Easy & fun (but i'm probably doing it right now)
+
+ * Check for BS.pack/unpack and replace w/utf8-string calls
+ * Move everyting to Error data type
+ * Move everything to [Lazy] bytestrings
+
 -Trivial- Boring
 
  * -Out-of-store file insertion-

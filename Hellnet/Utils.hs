@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, relaxByteString)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -122,3 +122,6 @@ getUnixTime :: IO Integer
 getUnixTime = do
 	tim <- getCurrentTime
 	return $ read $ formatTime defaultTimeLocale "%s" tim
+
+relaxByteString :: BS.ByteString -> BSL.ByteString
+relaxByteString = BSL.pack . BS.unpack

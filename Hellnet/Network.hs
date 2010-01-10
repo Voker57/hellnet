@@ -21,12 +21,14 @@ import Codec.Utils
 import Control.Concurrent
 import Control.Monad
 import qualified Control.Exception as Ex
+import qualified Data.ByteString.UTF8 as BU
 import Data.List
 import Data.Maybe
 import Data.Map (Map(..))
 import qualified Data.Map as Map
 import Debug.Trace
 import Hellnet
+import Hellnet.Crypto
 import Hellnet.Meta
 import Hellnet.Storage
 import Hellnet.Utils
@@ -38,7 +40,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Random
 import Safe
 import System.IO.Error
-import Text.JSON
+import Text.HJson as Json
 import Text.JSON.JPath
 
 getNodesList :: IO [Node]
@@ -211,6 +213,24 @@ getContactLog = do
 
 writeContactLog :: (Map String Integer) -> IO ()
 writeContactLog l = storeFile "contactlog" (BS8.pack $ show l)
+
+-- | Verify meta's signature
+-- | Returns Nothing if public key was not found or Just (check result)
+verifyMeta :: Meta -> IO (Maybe Bool)
+verifyMeta meta
+	| isNothing (signature meta) = return $ Just False
+	| isNothing (message meta) = return Nothing
+	| otherwise = do
+		let (Just msg, Just sig) = (message meta, signature meta)
+		keyChunk <- findChunk Nothing (keyID meta)
+		maybe (return Nothing) (\ch -> do
+			let str = BU.toString ch
+			either (const (return Nothing)) (\j -> do
+				maybe (return Nothing) (\k -> do
+					return $ Just $ verifyAsym k (relaxByteString msg) (relaxByteString sig)
+					) $ fromJson j
+				) $ Json.fromString str
+			) keyChunk
 
 -- fetchMeta :: KeyID -> String -> IO Bool
 -- fetchMeta keyId mName =
