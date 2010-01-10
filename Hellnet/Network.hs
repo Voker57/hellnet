@@ -235,8 +235,8 @@ verifyMeta meta
 fetchMeta :: KeyID -> String -> IO Bool
 fetchMeta keyId mName = undefined
 
-fetchMetaFromNode :: KeyID -> String -> Node -> IO (Maybe Meta)
-fetchMetaFromNode keyId mName node = do
+fetchMetaFromNode :: Node -> KeyID -> String -> IO (Maybe Meta)
+fetchMetaFromNode node keyId mName = do
 	result <- queryNodeGet (intercalate "/" ["meta", hashToHex keyId, mName]) node
 	maybe (return Nothing) (\s -> do
 		-- FIXME: Stringfuck, harmless but
