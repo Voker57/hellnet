@@ -5,9 +5,10 @@ Meta, uh
 
 Easy & fun (but i'm probably doing it right now)
 
- * Check for BS.pack/unpack and replace w/utf8-string calls
+ * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Move everyting to Error data type
- * Move everything to [Lazy] bytestrings
+ * Move everything that uses bytes to [Lazy] bytestrings
+ * Order exports
 
 -Trivial- Boring
 
