@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Network (fetchChunk, fetchChunks, getNodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, queryNodeGet, addNode, handshakeWithNode, updateNodeContactTime, getContactLog, writeContactLog) where
+module Hellnet.Network (fetchChunk, fetchChunks, getNodesList, writeNodesList, findChunk, findChunks, findFile, fetchFile, queryNodeGet, addNode, handshakeWithNode, updateNodeContactTime, getContactLog, writeContactLog, fetchMeta, fetchMetaFromNode) where
 
 import Codec.Utils
 import Control.Concurrent
@@ -29,7 +29,7 @@ import qualified Data.Map as Map
 import Debug.Trace
 import Hellnet
 import Hellnet.Crypto
-import Hellnet.Meta
+import Hellnet.Meta as Meta
 import Hellnet.Storage
 import Hellnet.Utils
 import Network.HTTP
@@ -232,12 +232,15 @@ verifyMeta meta
 				) $ Json.fromString str
 			) keyChunk
 
--- fetchMeta :: KeyID -> String -> IO Bool
--- fetchMeta keyId mName =
---
--- fetchMetaFromNode :: KeyID -> String -> Node -> IO (Maybe Meta)
--- fetchMetaFromNode keyId mName node = do
--- 	result <- queryNodeGet $ intercalate "/" ["meta", hashToHex keyId, mName]
--- 	maybe (return Nothing) (\s -> do
---
--- 		)
+fetchMeta :: KeyID -> String -> IO Bool
+fetchMeta keyId mName = undefined
+
+fetchMetaFromNode :: KeyID -> String -> Node -> IO (Maybe Meta)
+fetchMetaFromNode keyId mName node = do
+	result <- queryNodeGet (intercalate "/" ["meta", hashToHex keyId, mName]) node
+	maybe (return Nothing) (\s -> do
+		-- FIXME: Stringfuck, harmless but
+		let bs = BS8.pack s
+		let meta = Meta.fromByteString bs
+		return meta
+		) result
