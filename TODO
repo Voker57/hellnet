@@ -5,7 +5,6 @@ Easy & fun (but i'm probably doing it right now)
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Order exports
  * Replace maybe's w/cases
- * Replace Int's in Hellnet w/Integers
 
 -Trivial- Boring
 
