@@ -1,4 +1,4 @@
-module Hellnet.Meta (Meta(..), fromByteString) where
+module Hellnet.Meta (Meta(..), fromByteString, toByteString) where
 
 import Codec.Crypto.RSA
 import qualified Data.ByteString.Lazy as BSL
@@ -54,3 +54,8 @@ fromByteString bs = let
 	(s, sig) = BS.breakSubstring (BS8.pack "\n\n") bs;
 	js = BU.toString s in
 		either (const Nothing) (fromJson) $ Json.fromString js
+
+toByteString :: Meta -> BS.ByteString
+toByteString m = case (message m, signature m) of
+	(Just msg, Just sig) -> BS.concat [msg, BS8.pack "\n\n", sig]
+	otherwise -> BS.empty

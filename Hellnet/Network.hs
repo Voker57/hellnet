@@ -233,7 +233,31 @@ verifyMeta meta
 			) keyChunk
 
 fetchMeta :: KeyID -> String -> IO Bool
-fetchMeta keyId mName = undefined
+fetchMeta keyId mName = do
+	nodes <- getNodesList >>= shuffle
+	currentVersion <- getMeta keyId mName
+	fetched <- fetchMetaFromNodes nodes keyId mName
+	case fetched of
+		Nothing -> return False
+		Just m -> do
+			verified <- verifyMeta m
+			case verified of
+				Just True -> do
+					storeMeta m
+					return True
+				otherwise -> return False
+
+fetchMetaFromNodes :: [Node] -- ^ Nodes' list
+	-> Maybe Meta -- ^ Current (latest) version of this meta
+	-> KeyID -- ^ Meta's public key ID
+	-> String -- ^ Meta name
+	-> IO (Maybe Meta)
+fetchMetaFromNodes (n:ns) k s = do
+	fetched <- fetchMetaFromNode n k s
+	case fetched of
+		Just a -> return (Just a)
+		Nothing -> fetchMetaFromNodes ns k s
+fetchMetaFromNodes [] _ _ = return Nothing
 
 fetchMetaFromNode :: Node -> KeyID -> String -> IO (Maybe Meta)
 fetchMetaFromNode node keyId mName = do

@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored) where
+module Hellnet.Storage (insertFileContents, insertFileContentsLazy, getChunk, insertChunk, toFullPath, purgeChunk, storeFile, storeFile', getFile, getFile', hashToPath, isStored, storeMeta) where
 
 import Codec.Utils
 import Control.Monad
@@ -25,6 +25,7 @@ import Data.List
 import Data.Maybe
 import Hellnet
 import Hellnet.Crypto
+import Hellnet.Meta as Meta
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BU
@@ -115,16 +116,20 @@ isStored hsh = do
 	fp <- hashToPath hsh
 	return =<< (doesFileExist fp)
 
-getMeta :: KeyID -- ^ public key ID
+getMeta :: KeyID -> String -> IO (Maybe Meta)
+getMeta keyId mName = do
+	mFile <- getFile' ["meta", hashToHex keyId, mName]
+	return $ maybe (Nothing) (Meta.fromByteString) mFile
+
+getMetaValue :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name
 	-> String -- ^ Meta JPath
 	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
-getMeta keyId mName mPath = do
-	mFile <- getFile' ["meta", hashToHex keyId, mName]
-	maybe (return Nothing) (\bf -> do
-		let result = jPath mPath (BU.toString $ fst $ BS.breakSubstring (BS8.pack "\n\n") bf)
-		return $ either (const Nothing) (Just) result
-		) mFile
+getMetaValue keyId mName mPath = do
+	meta <- getMeta keyId mName
+	return $ maybe ( Nothing) (\m ->
+		either (const Nothing) (Just) $ jPath mPath (BU.toString $ fromMaybe BS.empty $ message m)
+		) meta
 
 modifyMeta :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name
@@ -132,3 +137,6 @@ modifyMeta :: KeyID -- ^ public key ID
 	-> (Json -> Json) -- ^ JSON modifier function
 	-> Bool -- Whether meta was successfully modified
 modifyMeta = undefined
+
+storeMeta :: Meta -> IO ()
+storeMeta m = storeFile' ["meta", hashToHex (keyID m), metaName m] $ Meta.toByteString m
