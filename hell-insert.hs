@@ -49,7 +49,7 @@ insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
 insertFilePrintHash encKey fname = do
 	let filename = last (splitPath fname)
 	hsh <- insertFile encKey fname
-	let url = FileURI hsh encKey (Just fname)
+	let url = FileURI hsh encKey (Just filename)
 	putStrLn $ show url
 
 insertChunkPrintHash :: Maybe [Octet] -> FilePath -> IO ()
@@ -58,7 +58,8 @@ insertChunkPrintHash encKey fname = do
 	dat <- BSL.readFile fname
 	when (not $ BSL.null $ BSL.drop (fromIntegral chunkSize) dat) (fail $ "Too large to insert as chunk: " ++ fname)
 	hsh <- insertChunk encKey dat
-	let url = ChunkURI hsh encKey (Just fname)
+	let
+	let url = ChunkURI hsh encKey (Just filename)
 	putStrLn $ show url
 
 main = do

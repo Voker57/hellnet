@@ -3,14 +3,13 @@
 Easy & fun (but i'm probably doing it right now)
 
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
- * Move everyting to Error data type
  * Order exports
  * Replace maybe's w/cases
  * Replace Int's in Hellnet w/Integers
- * Use only last part of filename in URI
 
 -Trivial- Boring
 
+ * Move everyting to Error data type
  * -Out-of-store file insertion-
  * Directory locking
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
