@@ -236,7 +236,7 @@ fetchMeta :: KeyID -> String -> IO Bool
 fetchMeta keyId mName = do
 	nodes <- getNodesList >>= shuffle
 	currentVersion <- getMeta keyId mName
-	fetched <- fetchMetaFromNodes nodes keyId mName
+	fetched <- fetchMetaFromNodes nodes currentVersion keyId mName
 	case fetched of
 		Nothing -> return False
 		Just m -> do
@@ -252,12 +252,15 @@ fetchMetaFromNodes :: [Node] -- ^ Nodes' list
 	-> KeyID -- ^ Meta's public key ID
 	-> String -- ^ Meta name
 	-> IO (Maybe Meta)
-fetchMetaFromNodes (n:ns) k s = do
+fetchMetaFromNodes (n:ns) currentVersion k s = do
 	fetched <- fetchMetaFromNode n k s
 	case fetched of
-		Just a -> return (Just a)
-		Nothing -> fetchMetaFromNodes ns k s
-fetchMetaFromNodes [] _ _ = return Nothing
+		Just a -> case currentVersion of
+			Nothing -> fetchMetaFromNodes ns Nothing k s
+			Just b -> let newerVersion = if timestamp a > timestamp b then a else b
+				in fetchMetaFromNodes ns (Just newerVersion) k s
+		Nothing -> fetchMetaFromNodes ns currentVersion k s
+fetchMetaFromNodes [] cv _ _ = return cv
 
 fetchMetaFromNode :: Node -> KeyID -> String -> IO (Maybe Meta)
 fetchMetaFromNode node keyId mName = do
