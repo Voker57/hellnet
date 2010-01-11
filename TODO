@@ -9,6 +9,9 @@ Easy & fun (but i'm probably doing it right now)
  * Move everything that uses bytes to [Lazy] bytestrings
  * Order exports
  * Replace maybe's w/cases
+ * Replace Int's in Hellnet w/Integers
+ * Use only last part of filename in URI
+
 -Trivial- Boring
 
  * -Out-of-store file insertion-
