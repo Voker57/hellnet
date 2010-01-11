@@ -55,7 +55,7 @@ main = do
 				Just (ChunkURI hsh key fname) -> do
 					let filename = maybe "/dev/stdout" (id) fname
 					conts <- findChunk key hsh
-					maybe (fail "Chunk not found in network") (BS.writeFile filename) conts
+					maybe (fail "Chunk not found in network") (BSL.writeFile filename) conts
 				Just (FileURI hsh key fname) -> do
 					let filename = maybe "/dev/stdout" (id) fname
 					fil <- fetchFile key hsh

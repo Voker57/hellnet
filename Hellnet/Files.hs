@@ -34,7 +34,7 @@ insertFile encKey fname  = do
 getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()
 getChunkAppendToFile encKey fname hsh = do
 	conts <- getChunk encKey hsh
-	maybe (error ("chunk not found in storage: " ++ (hashToHex hsh))) (BS.appendFile fname) conts
+	maybe (error ("chunk not found in storage: " ++ (hashToHex hsh))) (BSL.appendFile fname) conts
 
 downloadFile :: Maybe Key -> FilePath -> [Hash] -> IO ()
 downloadFile encKey fname hs = do

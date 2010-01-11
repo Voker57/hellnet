@@ -22,6 +22,7 @@ import Control.Concurrent
 import Control.Monad
 import qualified Control.Exception as Ex
 import qualified Data.ByteString.UTF8 as BU
+import qualified Data.ByteString.Lazy.UTF8 as BUL
 import Data.List
 import Data.Maybe
 import Data.Map (Map(..))
@@ -37,6 +38,7 @@ import Network.HTTP.Base
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Char8 as BSL8
 import Random
 import Safe
 import System.IO.Error
@@ -46,12 +48,12 @@ import Text.JSON.JPath
 getNodesList :: IO [Node]
 getNodesList = do
 	listfile <- getFile =<< toFullPath "nodelist"
-	let nodes = maybe (Nothing) (readMay . BS8.unpack) listfile
+	let nodes = maybe (Nothing) (readMay . BSL8.unpack) listfile
 	return $ maybe [] (id) nodes
 
 writeNodesList :: [Node] -> IO ()
 writeNodesList ns = do
-	storeFile "nodelist" $ BS8.pack $ show ns
+	storeFile "nodelist" $ BSL8.pack $ show ns
 
 -- | adds node to list if it isn't already there, returns true
 -- | otherwise returns false
@@ -98,7 +100,7 @@ fetchChunk node p = do
 	req <- queryNodeGet reqString node
 	maybe (return False)
 		(\r -> do
-			chID <- insertChunk Nothing $ BS.unpack $ BS8.pack r
+			chID <- insertChunk Nothing $ BSL8.pack r
 			if (chID == p) then
 				return True
 				else do
@@ -111,24 +113,24 @@ findFile :: Maybe Key -> Hash -> IO (Either [Hash] BSL.ByteString)
 findFile key hsh = do
 	link <- findChunk key hsh
 	maybe (return (Left [hsh])) (\l -> do
-		res <- findFile' key (BS.unpack l)
+		res <- findFile' key l
 		return res
 		) link
 
 findFile' :: Maybe Key -> Chunk -> IO (Either [Hash] BSL.ByteString)
 findFile' key cs = do
-	let chs = splitFor hashSize cs
-	chs' <- findChunks key chs
+	let chs = splitBslFor hashSize cs
+	chs' <- findChunks key $ map (BSL.unpack) chs
 	either (return . Left)
 		(\c -> if (length chs) == (hashesPerChunk + 1) then do
-			f <- findFile' key (BS.unpack (last c))
-			either (return . Left) (\ff -> return $ Right $ BSL.concat [(BSL.pack $ BS.unpack $ BS.concat $ init c), ff]) f
+			f <- findFile' key (last c)
+			either (return . Left) (\ff -> return $ Right $ BSL.concat [BSL.concat $ init c, ff]) f
 			else
-			return (Right (BSL.pack (BS.unpack (BS.concat c))))
+			return $ Right $ BSL.concat c
 		) chs'
 
 -- | tries to locate chunks, returns either list of unavailable ones or list of chunks' content
-findChunks :: Maybe Key -> [Hash] -> IO (Either [Hash] [BS.ByteString])
+findChunks :: Maybe Key -> [Hash] -> IO (Either [Hash] [Chunk])
 findChunks key chs = do
 	res <- mapM (getChunk key) chs
 	let unavailable = map (fst) (filter ((== Nothing) . snd) (zip chs res))
@@ -142,7 +144,7 @@ findChunks key chs = do
 				else
 				return (Left fromNet)
 
-findChunk :: Maybe Key -> Hash -> IO (Maybe BS.ByteString)
+findChunk :: Maybe Key -> Hash -> IO (Maybe Chunk)
 findChunk key hsh = do
 	fC <- findChunks key [hsh]
 	either (const (return Nothing)) (return . Just . head) fC
@@ -152,13 +154,13 @@ fetchFile :: Maybe Key -> Hash -> IO (Either [Hash] [Hash])
 fetchFile encKey hsh = do
 	link <- findChunk encKey hsh
 	maybe (return (Left [hsh])) (\l -> do
-		res <- fetchFile' encKey (BS.unpack l)
+		res <- fetchFile' encKey l
 		return res
 		) link
 
 fetchFile' :: Maybe Key -> Chunk -> IO (Either [Hash] [Hash])
 fetchFile' encKey cs = do
-	let chs = splitFor hashSize cs
+	let chs = splitFor hashSize $ BSL.unpack cs
 	stored <- filterM (isStored) chs
 	chs' <- if stored /= chs then
 		fetchChunks chs
@@ -169,7 +171,7 @@ fetchFile' encKey cs = do
 		else
 		if (length chs) == (hashesPerChunk + 1) then do
 			c <- getChunk encKey $ last chs
-			f <- fetchFile' encKey $ BS.unpack $ unjust $ c
+			f <- fetchFile' encKey $ unjust c
 			return (either (Left) (Right . ((++) (init chs))) f)
 			else
 			return (Right chs)
@@ -194,7 +196,7 @@ handshakeWithNode :: Node -> IO Bool
 handshakeWithNode node = do
 	sP <- getFile "serverport"
 	result <- maybe (return False) (\serverPort -> do
-		res <- queryNodePost "handshake" [("port", BS8.unpack serverPort)] node
+		res <- queryNodePost "handshake" [("port", BSL8.unpack serverPort)] node
 		return $ maybe (False) ((flip elem) ["OK","EXISTS"]) res
 		) sP
 	when result (discard =<< addNode node)
@@ -208,11 +210,11 @@ updateNodeContactTime hst tim = do
 getContactLog :: IO (Map String Integer)
 getContactLog = do
 	fil <- getFile "contactlog"
-	let res = maybe (Nothing) (readMay . BS8.unpack) fil
+	let res = maybe (Nothing) (readMay . BSL8.unpack) fil
 	return $ maybe (Map.fromList []) (id) res
 
 writeContactLog :: (Map String Integer) -> IO ()
-writeContactLog l = storeFile "contactlog" (BS8.pack $ show l)
+writeContactLog l = storeFile "contactlog" (BSL8.pack $ show l)
 
 -- | Verify meta's signature
 -- | Returns Nothing if public key was not found or Just (check result)
@@ -224,10 +226,10 @@ verifyMeta meta
 		let (Just msg, Just sig) = (message meta, signature meta)
 		keyChunk <- findChunk Nothing (keyID meta)
 		maybe (return Nothing) (\ch -> do
-			let str = BU.toString ch
+			let str = BUL.toString ch
 			either (const (return Nothing)) (\j -> do
 				maybe (return Nothing) (\k -> do
-					return $ Just $ verifyAsym k (relaxByteString msg) (relaxByteString sig)
+					return $ Just $ verifyAsym k msg sig
 					) $ fromJson j
 				) $ Json.fromString str
 			) keyChunk
@@ -267,7 +269,7 @@ fetchMetaFromNode node keyId mName = do
 	result <- queryNodeGet (intercalate "/" ["meta", hashToHex keyId, mName]) node
 	maybe (return Nothing) (\s -> do
 		-- FIXME: Stringfuck, harmless but
-		let bs = BS8.pack s
+		let bs = BSL8.pack s
 		let meta = Meta.fromByteString bs
 		return meta
 		) result
