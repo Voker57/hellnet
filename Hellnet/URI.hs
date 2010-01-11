@@ -34,7 +34,7 @@ instance Show HellnetURI where
 				}
 			(FileURI hsh key fname) -> nullURI {
 				uriScheme = Just "hell"
-				, uriRegName = Just "chunk"
+				, uriRegName = Just "file"
 				, uriPath = "/" ++ hashToHex hsh
 				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
