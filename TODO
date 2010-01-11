@@ -1,7 +1,6 @@
 == Tasks.
 
-Meta, uh
- * h
+* Overtask: perform better than 21m / 113s on big buck bunny
 
 Easy & fun (but i'm probably doing it right now)
 
@@ -9,7 +8,7 @@ Easy & fun (but i'm probably doing it right now)
  * Move everyting to Error data type
  * Move everything that uses bytes to [Lazy] bytestrings
  * Order exports
-
+ * Replace maybe's w/cases
 -Trivial- Boring
 
  * -Out-of-store file insertion-
