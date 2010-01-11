@@ -1,12 +1,9 @@
 == Tasks.
 
-* Overtask: perform better than 21m / 113s on big buck bunny
-
 Easy & fun (but i'm probably doing it right now)
 
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Move everyting to Error data type
- * Move everything that uses bytes to [Lazy] bytestrings
  * Order exports
  * Replace maybe's w/cases
  * Replace Int's in Hellnet w/Integers
