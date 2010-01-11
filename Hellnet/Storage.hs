@@ -29,6 +29,7 @@ import Hellnet.Meta as Meta
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BU
+import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 -- import OpenSSL.DSA
@@ -38,68 +39,65 @@ import System.Posix.Files
 import Text.JSON.JPath
 import Text.HJson
 
-hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Hash
-hashAndAppend _ a [] = do return a
-hashAndAppend encKey a b = do
-	bChunk <- insertChunk encKey b
-	return (a ++ bChunk)
+hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Chunk
+hashAndAppend encKey a b
+	| BSL.null b = return a
+	| otherwise = do
+		bHash <- insertChunk encKey b
+		return (BSL.append a $ BSL.pack bHash)
 
 insertFileContentsLazy :: Maybe Key -> BSL.ByteString -> IO Hash
 insertFileContentsLazy encKey bs = do
 	let chunks = splitBslFor chunkSize bs
-	chunkHashes <- mapM ((insertChunk encKey) . BSL.unpack) chunks
+	chunkHashes <- mapM (insertChunk encKey) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
-	let fileLinkChunks = Prelude.map (flatten) fileLink
+	let fileLinkChunks = Prelude.map (BSL.pack . flatten) fileLink
 		where flatten a = Prelude.foldl1 (++) a
-	fileLinkHead <- foldrM (hashAndAppend encKey) [] (fileLinkChunks)
+	fileLinkHead <- foldrM (hashAndAppend encKey) BSL.empty (fileLinkChunks)
 	fileLinkHash <- insertChunk encKey fileLinkHead
 	return fileLinkHash
 
 insertFileContents :: Maybe Key -> BS.ByteString -> IO Hash
 insertFileContents k b = insertFileContentsLazy k (BSL.pack $ BS.unpack b)
 
-insertChunkBS :: Maybe Key -> BS.ByteString -> IO Hash
-insertChunkBS k c = insertChunk k (BS.unpack c)
-
 insertChunk :: Maybe Key -> Chunk -> IO Hash
-insertChunk encKey ch
-	| length ch <= chunkSize = do
-		let chunk = maybe (ch) ((flip encryptAES) ch) encKey
-		let chunkDigestRaw = SHA512.hash chunk
-		let chunkDigest = hashToHex chunkDigestRaw
-		let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
-		storeFile fullPath (BS.pack chunk)
-		return chunkDigestRaw
+insertChunk encKey ch = do
+	let chunk = maybe (ch) ((flip encryptSym) ch) encKey
+	let chunkDigestRaw = Hellnet.Crypto.hash chunk
+	let chunkDigest = hashToHex chunkDigestRaw
+	let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
+	storeFile fullPath (chunk)
+	return chunkDigestRaw
 
-getChunk :: Maybe Key -> Hash -> IO (Maybe BS.ByteString)
+getChunk :: Maybe Key -> Hash -> IO (Maybe Chunk)
 getChunk key hsh = do
 	let chunkKey = hashToHex hsh
 	filepath <- toFullPath (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
 	fil <- getFile filepath
-	return $ maybe Nothing (\conts -> Just (maybe (conts) (\k -> BS.pack $ decryptAES k $ BS.unpack conts) key)) fil
+	return $ maybe Nothing (\conts -> Just (maybe (conts) (\k -> decryptSym k conts) key)) fil
 
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
 	dir <- getAppUserDataDirectory "hellnet"
 	return (joinPath [dir,fpath])
 
-storeFile :: FilePath -> BS.ByteString -> IO ()
+storeFile :: FilePath -> BSL.ByteString -> IO ()
 storeFile fpath dat = do
 	fullPath <- toFullPath fpath
 	createDirectoryIfMissing True (dropFileName fullPath)
-	BS.writeFile fullPath dat
+	BSL.writeFile fullPath dat
 
-storeFile' :: [String] -> BS.ByteString -> IO ()
+storeFile' :: [String] -> BSL.ByteString -> IO ()
 storeFile' fs = storeFile (joinPath fs)
 
-getFile :: FilePath -> IO (Maybe BS.ByteString)
+getFile :: FilePath -> IO (Maybe BSL.ByteString)
 getFile fpath = do
 	fullPath <- toFullPath fpath
 	catch (do
-		conts <- BS.readFile fullPath
+		conts <- BSL.readFile fullPath
 		return (Just conts)) (const (return Nothing))
 
-getFile' :: [String] -> IO (Maybe BS.ByteString)
+getFile' :: [String] -> IO (Maybe BSL.ByteString)
 getFile' fs = getFile (joinPath fs)
 
 purgeChunk :: Hash -> IO ()
@@ -128,7 +126,7 @@ getMetaValue :: KeyID -- ^ public key ID
 getMetaValue keyId mName mPath = do
 	meta <- getMeta keyId mName
 	return $ maybe ( Nothing) (\m ->
-		either (const Nothing) (Just) $ jPath mPath (BU.toString $ fromMaybe BS.empty $ message m)
+		either (const Nothing) (Just) $ jPath mPath (BUL.toString $ fromMaybe BSL.empty $ message m)
 		) meta
 
 modifyMeta :: KeyID -- ^ public key ID

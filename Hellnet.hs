@@ -19,14 +19,15 @@ module Hellnet where
 
 import Codec.Utils
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 
 type Hash = [Octet]
-type Chunk = [Octet]
+type Chunk = BSL.ByteString
 type Key = [Octet]
 type Node = (String, Int)
 type NodeID = Hash
 type KeyID = Hash
-type Signature = BS.ByteString
+type Signature = BSL.ByteString
 
 hashSize :: Int
 hashSize = 64

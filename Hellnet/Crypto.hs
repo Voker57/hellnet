@@ -1,4 +1,4 @@
-module Hellnet.Crypto (decryptAES, encryptAES, encryptAsym, encryptAsym', decryptAsym, signAsym, verifyAsym) where
+module Hellnet.Crypto (decryptSym, encryptSym, encryptAsym, encryptAsym', decryptAsym, signAsym, verifyAsym, Hellnet.Crypto.hash) where
 
 import Codec.Crypto.RSA as RSA
 import Codec.Encryption.AES as AES
@@ -6,6 +6,7 @@ import Codec.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Char8 as BS8
+import Data.Digest.SHA512 as SHA512
 import Data.LargeWord
 import System.Random
 import qualified Data.Map as Map
@@ -14,11 +15,11 @@ import Text.HJson
 import Safe
 import System.Posix.Files
 
-decryptAES :: [Octet] -> [Octet] -> [Octet]
-decryptAES key os = listToOctets $ map (AES.decrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os
+decryptSym :: [Octet] -> BSL.ByteString -> BSL.ByteString
+decryptSym key os = BSL.pack $  listToOctets $ map (AES.decrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets $ BSL.unpack os
 
-encryptAES :: [Octet] -> [Octet] -> [Octet]
-encryptAES key os = listToOctets $ map (AES.encrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets os
+encryptSym :: [Octet] -> BSL.ByteString -> BSL.ByteString
+encryptSym key os = BSL.pack $ listToOctets $ map (AES.encrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets $ BSL.unpack os
 
 generateKeyPair :: IO (PublicKey, PrivateKey)
 generateKeyPair = do
@@ -67,8 +68,11 @@ encryptAsym pk msg = do
 	gen <- newStdGen
 	let (res, _) = RSA.encrypt gen pk msg
 	return res
+
 encryptAsym' :: RandomGen g => g -> PublicKey -> BSL.ByteString -> (BSL.ByteString, g)
 encryptAsym' = RSA.encrypt
 decryptAsym = RSA.decrypt
 signAsym = RSA.sign
 verifyAsym = RSA.verify
+
+hash = SHA512.hash . BSL.unpack

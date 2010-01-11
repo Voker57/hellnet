@@ -23,6 +23,7 @@ import Hellnet.Storage
 import Hellnet.URI
 import Hellnet.Utils
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import System.Console.GetOpt
 import System.Environment (getArgs)
@@ -54,9 +55,9 @@ insertFilePrintHash encKey fname = do
 insertChunkPrintHash :: Maybe [Octet] -> FilePath -> IO ()
 insertChunkPrintHash encKey fname = do
 	let filename = last (splitPath fname)
-	dat <- BS.readFile fname
-	when (BS.length dat > chunkSize) (fail $ "Too large to insert as chunk: " ++ fname)
-	hsh <- insertChunk encKey (BS.unpack dat)
+	dat <- BSL.readFile fname
+	when (not $ BSL.null $ BSL.drop (fromIntegral chunkSize) dat) (fail $ "Too large to insert as chunk: " ++ fname)
+	hsh <- insertChunk encKey dat
 	let url = ChunkURI hsh encKey (Just fname)
 	putStrLn $ show url
 
