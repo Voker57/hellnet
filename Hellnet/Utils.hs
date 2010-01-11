@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, relaxByteString)  where
+module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, relaxByteString, breakLazySubstring)  where
 
 import Codec.Text.Raw
 import Codec.Utils
@@ -125,3 +125,13 @@ getUnixTime = do
 
 relaxByteString :: BS.ByteString -> BSL.ByteString
 relaxByteString = BSL.pack . BS.unpack
+
+breakLazySubstring :: BSL.ByteString -- ^ String to search for
+               -> BSL.ByteString -- ^ String to search in
+               -> (BSL.ByteString,BSL.ByteString) -- ^ Head and tail of string broken at substring
+breakLazySubstring pat src = search 0 src
+	where
+		search n s
+			| BSL.null s = (src,BSL.empty) -- not found
+			| pat `BSL.isPrefixOf` s = (BSL.take n src,s)
+			| otherwise = search (n+1) (BSL.tail s)
