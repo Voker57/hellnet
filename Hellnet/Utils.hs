@@ -15,7 +15,30 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Utils (hashToHex, hexToHash, splitFor, stringToOctets, filt, filtM, unjust, splitBsFor, shuffle, genHash, discard, genKey, simpleOpts, splitBslFor, forkChild, splitInTwo, processOptions, mkUrl, explode, getUnixTime, relaxByteString, breakLazySubstring)  where
+module Hellnet.Utils (
+	breakLazySubstring
+	, discard
+	, explode
+	, filt
+	, filtM
+	, forkChild
+	, genHash
+	, genKey
+	, getUnixTime
+	, hashToHex
+	, hexToHash
+	, mkUrl
+	, processOptions
+	, relaxByteString
+	, shuffle
+	, simpleOpts
+	, splitBsFor
+	, splitBslFor
+	, splitFor
+	, splitInTwo
+	, stringToOctets
+	, unjust
+	)  where
 
 import Codec.Text.Raw
 import Codec.Utils
