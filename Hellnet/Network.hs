@@ -117,7 +117,7 @@ fetchChunk node p = do
 	req <- queryNodeGet reqString node
 	maybe (return False)
 		(\r -> do
-			chID <- insertChunk Nothing $ BSL8.pack r
+			chID <- insertChunk Nothing r
 			if (chID == p) then
 				return True
 				else do
@@ -193,19 +193,18 @@ fetchFile' encKey cs = do
 			else
 			return (Right chs)
 
-queryNodeGet :: String -> Node -> IO (Maybe String)
+queryNodeGet :: String -> Node -> IO (Maybe BSL.ByteString)
 queryNodeGet s node = do
-	print $ mkUrl node s
-	rep <- ((return . Just) =<< simpleHTTP (getRequest $ mkUrl node s)) `catch` const (return Nothing)
+	rep <- ((return . Just) =<< simpleHTTP (mkRequest GET $ mkUrl node s)) `catch` const (return Nothing)
 	print rep
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
 
-queryNodePost :: String -> [(String, String)] -> Node -> IO (Maybe String)
+queryNodePost :: String -> [(String, String)] -> Node -> IO (Maybe BSL.ByteString)
 queryNodePost s fields node = do
-	let dat = urlEncodeVars fields
+	let dat = BSL8.pack $ urlEncodeVars fields
 	let url = mkUrl node s
-	let request = (postRequest url) {rqBody=dat, rqHeaders=[Header HdrContentType "application/x-www-form-urlencoded",
-		Header HdrContentLength $ show $ length dat]}
+	let request = (mkRequest POST url :: Request BSL.ByteString) {rqBody=dat, rqHeaders=[Header HdrContentType "application/x-www-form-urlencoded",
+		Header HdrContentLength $ show $ BSL8.length dat]}
 	rep <- ((return . Just) =<< simpleHTTP request) `catch` const (return Nothing)
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
 
@@ -214,7 +213,7 @@ handshakeWithNode node = do
 	sP <- getFile "serverport"
 	result <- maybe (return False) (\serverPort -> do
 		res <- queryNodePost "handshake" [("port", BSL8.unpack serverPort)] node
-		return $ maybe (False) ((flip elem) ["OK","EXISTS"]) res
+		return $ maybe (False) (\r -> (BSL8.unpack r) `elem` ["OK","EXISTS"]) res
 		) sP
 	when result (discard =<< addNode node)
 	return result
@@ -284,9 +283,7 @@ fetchMetaFromNodes [] cv _ _ = return cv
 fetchMetaFromNode :: Node -> KeyID -> String -> IO (Maybe Meta)
 fetchMetaFromNode node keyId mName = do
 	result <- queryNodeGet (intercalate "/" ["meta", hashToHex keyId, mName]) node
-	maybe (return Nothing) (\s -> do
-		-- FIXME: Stringfuck, harmless but
-		let bs = BSL8.pack s
+	maybe (return Nothing) (\bs -> do
 		let meta = Meta.fromByteString bs
 		return meta
 		) result

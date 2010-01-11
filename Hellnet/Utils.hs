@@ -50,6 +50,7 @@ import Data.List
 import Data.Time
 import Data.Word
 import Hellnet
+import Network.URI
 import Numeric
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
@@ -133,8 +134,18 @@ splitInTwo c s = let broken = break (== c) s in ((fst broken), (tail $ snd broke
 processOptions def = foldl (flip ($)) def
 
 -- | Makes URI for node
-mkUrl :: Node -> String -> String
-mkUrl (h,p) s = "http://" ++ (h) ++ ":" ++ (show p) ++ "/" ++ s
+mkUrl :: Node -> String -> Network.URI.URI
+mkUrl (h,p) s = let (pa, qe) = break (== '?') s in URI { -- FIXME: blah!
+	uriScheme = "http:"
+	, uriAuthority = Just URIAuth {
+		uriUserInfo = ""
+		, uriRegName = h
+		, uriPort = ':' : show p
+		}
+	, uriPath = pa
+	, uriQuery = qe
+	, uriFragment = ""
+	}
 
 -- | Good old explode()
 explode :: Char -> String -> [String]
