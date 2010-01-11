@@ -5,31 +5,30 @@ Easy & fun (but i'm probably doing it right now)
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Replace maybe's w/cases
 
--Trivial- Boring
+Boring
 
  * Move everyting to Error data type
- * -Out-of-store file insertion-
  * Directory locking
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
  * Sizes!
 
 Non-trivial
 
- * Active Meta-updating (Metamail)
  * Protect (more) against connecting to localhost
  * Logging
-
-Slightly harder
-
- -
 
 Requires more thinking
 
  * Other ways of exchanging data than HTTP
- * Digital signatures
- * Cryptographic mechanism of identifying node
+
 
 Real Massive
 
  * ECRS' scheme for meta lookups. Probably requires implementation of cross-platform random generator and digital signatures
  * Tracking
+
+Not sure if it's worth it
+
+ * Cryptographic mechanism of identifying node
+ * Active Meta-updating (Metamail)
+ * Out-of-store file insertion
