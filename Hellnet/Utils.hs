@@ -53,6 +53,7 @@ import Hellnet
 import Network.URI
 import Numeric
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.UTF8 as BU
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString.Lazy as BSL
 import Random
@@ -86,7 +87,7 @@ splitBslFor n xs = if BSL.null xs then
 	(BSL.take (fromIntegral n) xs) : (splitBslFor n (BSL.drop (fromIntegral n) xs))
 
 stringToOctets :: String -> [Octet]
-stringToOctets s = BS.unpack $ BS8.pack s
+stringToOctets s = BS.unpack $ BU.fromString s
 
 -- | filters list of values through list of filters
 filt fs xs = foldl (flip ($)) xs fs
