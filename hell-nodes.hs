@@ -15,27 +15,24 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+{-# LANGUAGE BangPatterns #-}
+
 import Control.Exception (evaluate)
 import Hellnet.Network
 import Hellnet.Storage
 import System.Environment
 
-node ss = ( (ss !! 1), (read (ss !! 2)) :: Int )
+node h p = ( h, read p :: Int )
 
 main = do
-	nodes <- getNodesList
-	evaluate nodes
+	!nodes <- getNodesList
 	args <- getArgs
-	if and [((length args) == 3), ((head args) == "add")] then
-		writeNodesList ((node args) : nodes)
-		else if and [((length args) == 3), ((head args) == "rm")] then
-			writeNodesList (dropWhile (== (node args)) nodes)
-			else if and [((length args) == 1), ((head args) == "clear")] then
-				writeNodesList []
-				else if and [((length args) == 1), ((head args) == "list")] then
-					print nodes
-					else if and [length args == 3, head args == "handshake"] then do
-						result <- handshakeWithNode (node args)
-						putStrLn $ if result then "Handshake successful" else "Handshake failed"
-						else
-						putStrLn "Usage: hell-nodes {add,rm,clear,list} <host> <port>"
+	case args of
+		["add", host, port] -> writeNodesList (node host port : nodes)
+		["rm", host, port] -> writeNodesList (dropWhile (== node host port) nodes)
+		["clear"] -> writeNodesList []
+		["list"] -> print nodes
+		["handshake", host, port] -> do
+			result <- handshakeWithNode (node host port)
+			putStrLn $ if result then "Handshake successful" else "Handshake failed"
+		otherwise -> putStrLn "Usage: hell-nodes {add,rm,clear,list, discover} <host> <port>"
