@@ -21,6 +21,7 @@ import Codec.Utils
 import Data.Maybe
 import Hellnet
 import Hellnet.Storage
+import Hellnet.URI
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL

@@ -26,6 +26,8 @@ module Hellnet.Network (
 	, findChunk
 	, findChunks
 	, findFile
+	, findMetaValue
+	, findURI
 	, getContactLog
 	, getNodesList
 	, handshakeWithNode
@@ -50,6 +52,7 @@ import Hellnet
 import Hellnet.Crypto
 import Hellnet.Meta as Meta
 import Hellnet.Storage
+import Hellnet.URI
 import Hellnet.Utils
 import Network.HTTP
 import Network.HTTP.Base
@@ -57,6 +60,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSL8
+import qualified Data.ByteString.Lazy.UTF8 as BUL
 import Random
 import Safe
 import System.IO.Error
@@ -289,12 +293,31 @@ fetchMetaFromNode node keyId mName = do
 		return meta
 		) result
 
-findMetaValue :: KeyID -> String -> String -> IO (Maybe [Json])
-findMetaValue keyId mname jp = do
-	fetchMeta keyId mname
-	getMetaValue keyId mname jp
+
+findMetaValue :: KeyID -- ^ public key ID
+	-> String -- ^ Meta name
+	-> String -- ^ Meta JPath
+	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
+findMetaValue keyId mName mPath = do
+	meta <- getMeta keyId mName
+	case meta of
+		Nothing -> return Nothing
+		Just m -> do
+			conts <- findURI (contentURI m)
+			case conts of
+				Nothing -> return Nothing
+				Just cs -> return $ either (const Nothing) (Just) $ jPath mPath (BUL.toString cs)
 
 fetchNodeListFromNode :: Node -> IO [Node]
 fetchNodeListFromNode node = do
 	results <- queryNodeGet "/nodelist" node
 	return (fromMaybe [] (maybe Nothing (readMay . BSL8.unpack) results))
+
+findURI :: HellnetURI -> IO (Maybe BSL.ByteString)
+findURI uri = case uri of
+	(ChunkURI hsh key fname) -> do
+		findChunk key hsh
+	(FileURI hsh key fname) -> do
+		fil <- findFile key hsh
+		return $ either (const Nothing) (Just) fil
+	otherwise -> return Nothing

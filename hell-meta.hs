@@ -20,6 +20,7 @@ import Hellnet.Network
 import Hellnet.Storage
 import Hellnet.Utils
 import System.Environment
+import Text.HJson as JSON
 
 fetchMetaPrintResult :: KeyID -> String -> IO ()
 fetchMetaPrintResult keyid mname = do
@@ -39,3 +40,9 @@ main = do
 			let keyid = hexToHash keyidHex
 			allmeta <- getMetaNames keyid
 			mapM_ (fetchMetaPrintResult keyid) allmeta
+		["get", keyidHex, mname, mpath] -> do
+			let keyid = hexToHash keyidHex
+			vs <- findMetaValue keyid mname mpath
+			case vs of
+				Nothing -> error "Meta not found"
+				Just a -> mapM_ (putStrLn . JSON.toString) $ a

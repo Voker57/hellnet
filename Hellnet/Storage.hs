@@ -23,7 +23,6 @@ module Hellnet.Storage (
 	, getFile'
 	, getMeta
 	, getMetaNames
-	, getMetaValue
 	, hashToPath
 	, insertChunk
 	, insertFileContents
@@ -143,16 +142,6 @@ getMetaNames keyid = do
 	let path = ["meta", hashToHex keyid]
 	res <- getDirectory' path
 	return $ fromMaybe [] res
-
-getMetaValue :: KeyID -- ^ public key ID
-	-> String -- ^ Meta name
-	-> String -- ^ Meta JPath
-	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
-getMetaValue keyId mName mPath = do
-	meta <- getMeta keyId mName
-	return $ maybe ( Nothing) (\m ->
-		either (const Nothing) (Just) $ jPath mPath (BUL.toString $ fromMaybe BSL.empty $ message m)
-		) meta
 
 modifyMeta :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name
