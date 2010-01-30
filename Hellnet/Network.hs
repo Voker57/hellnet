@@ -22,6 +22,7 @@ module Hellnet.Network (
 	, fetchFile
 	, fetchMeta
 	, fetchMetaFromNode
+	, fetchNodeListFromNode
 	, findChunk
 	, findChunks
 	, findFile
@@ -287,3 +288,8 @@ fetchMetaFromNode node keyId mName = do
 		let meta = Meta.fromByteString bs
 		return meta
 		) result
+
+fetchNodeListFromNode :: Node -> IO [Node]
+fetchNodeListFromNode node = do
+	results <- queryNodeGet "/nodelist" node
+	return (fromMaybe [] (maybe Nothing (readMay . BSL8.unpack) results))

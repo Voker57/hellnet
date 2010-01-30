@@ -17,7 +17,8 @@
 
 {-# LANGUAGE BangPatterns #-}
 
-import Control.Exception (evaluate)
+import Control.Monad
+import qualified Data.Set as Set
 import Hellnet.Network
 import Hellnet.Storage
 import System.Environment
@@ -35,4 +36,10 @@ main = do
 		["handshake", host, port] -> do
 			result <- handshakeWithNode (node host port)
 			putStrLn $ if result then "Handshake successful" else "Handshake failed"
+		["discover"] -> do
+			when (null nodes) (fail "Need at least one pre-discovered node! Use `hell-nodes handshake` to manually discover one")
+			moreNodes <- mapM (fetchNodeListFromNode) nodes
+			let nlist = Set.toList $ Set.unions $ map (Set.fromList) (nodes : moreNodes)
+			putStrLn $ show (length nlist - length nodes) ++ " new nodes discovered"
+			writeNodesList nlist
 		otherwise -> putStrLn "Usage: hell-nodes {add,rm,clear,list, discover} <host> <port>"
