@@ -289,6 +289,11 @@ fetchMetaFromNode node keyId mName = do
 		return meta
 		) result
 
+findMetaValue :: KeyID -> String -> String -> IO (Maybe [Json])
+findMetaValue keyId mname jp = do
+	fetchMeta keyId mname
+	getMetaValue keyId mname jp
+
 fetchNodeListFromNode :: Node -> IO [Node]
 fetchNodeListFromNode node = do
 	results <- queryNodeGet "/nodelist" node

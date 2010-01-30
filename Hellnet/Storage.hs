@@ -17,9 +17,13 @@
 
 module Hellnet.Storage (
 	getChunk
+	, getDirectory
+	, getDirectory'
 	, getFile
 	, getFile'
 	, getMeta
+	, getMetaNames
+	, getMetaValue
 	, hashToPath
 	, insertChunk
 	, insertFileContents
@@ -134,6 +138,12 @@ getMeta keyId mName = do
 	mFile <- getFile' ["meta", hashToHex keyId, mName]
 	return $ maybe (Nothing) (Meta.fromByteString) mFile
 
+getMetaNames :: KeyID -> IO [String]
+getMetaNames keyid = do
+	let path = ["meta", hashToHex keyid]
+	res <- getDirectory' path
+	return $ fromMaybe [] res
+
 getMetaValue :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name
 	-> String -- ^ Meta JPath
@@ -153,3 +163,16 @@ modifyMeta = undefined
 
 storeMeta :: Meta -> IO ()
 storeMeta m = storeFile' ["meta", hashToHex (keyID m), metaName m] $ Meta.toByteString m
+
+getDirectory :: FilePath -> IO (Maybe [FilePath])
+getDirectory fpath = do
+	fullPath <- toFullPath fpath
+	exists <- doesDirectoryExist fullPath
+	if exists then do
+		conts <- getDirectoryContents fullPath
+		return $ Just $ conts \\ [".", ".."]
+		else
+		return Nothing
+
+getDirectory' :: [FilePath] -> IO (Maybe [FilePath])
+getDirectory' = getDirectory . joinPath
