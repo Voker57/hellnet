@@ -35,11 +35,19 @@ main = do
 		["list"] -> print nodes
 		["handshake", host, port] -> do
 			result <- handshakeWithNode (node host port)
-			putStrLn $ if result then "Handshake successful" else "Handshake failed"
+			if result then do
+				addNode $ node host port
+				putStrLn "Handshake successful"
+				else
+				putStrLn "Handshake failed"
 		["discover"] -> do
 			when (null nodes) (fail "Need at least one pre-discovered node! Use `hell-nodes handshake` to manually discover one")
 			moreNodes <- mapM (fetchNodeListFromNode) nodes
-			let nlist = Set.toList $ Set.unions $ map (Set.fromList) (nodes : moreNodes)
-			putStrLn $ show (length nlist - length nodes) ++ " new nodes discovered"
-			writeNodesList nlist
+			let nset = Set.unions $ map (Set.fromList) (moreNodes)
+			putStrLn $ show (length $ Set.toList $ Set.difference nset $ Set.fromList nodes) ++ " new nodes discovered"
+			writeNodesList $ Set.toList $ Set.union (Set.fromList nodes) nset
+			putStrLn "Handshaking..."
+			results <- mapM (handshakeWithNode) $ Set.toList nset
+			putStrLn $ (show $ length $ filter (id) results) ++ " out of " ++ (show $ length results) ++ " handshakes successful."
+
 		otherwise -> putStrLn "Usage: hell-nodes {add,rm,clear,list, discover} <host> <port>"

@@ -220,7 +220,6 @@ handshakeWithNode node = do
 		res <- queryNodePost "handshake" [("port", BSL8.unpack serverPort)] node
 		return $ maybe (False) (\r -> (BSL8.unpack r) `elem` ["OK","EXISTS"]) res
 		) sP
-	when result (discard =<< addNode node)
 	return result
 
 updateNodeContactTime :: String -> Integer -> IO ()
