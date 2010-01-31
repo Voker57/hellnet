@@ -33,9 +33,11 @@ module Hellnet.Storage (
 	, storeFile
 	, storeFile'
 	, storeMeta
+	, storePrivateKey
 	, toFullPath
 	) where
 
+import Codec.Crypto.RSA as RSA
 import Codec.Utils
 import Control.Monad
 import Data.Digest.SHA512 as SHA512
@@ -58,7 +60,7 @@ import System.FilePath
 import System.IO
 import System.Posix.Files
 import Text.JSON.JPath
-import Text.HJson
+import Text.HJson as JSON
 
 hashAndAppend :: Maybe Key -> Chunk -> Chunk -> IO Chunk
 hashAndAppend encKey a b
@@ -185,3 +187,10 @@ insertData encKey dat = if BSL.null $ BSL.drop (256 * 1024) dat then do
 	else do
 	hsh <- insertFileContentsLazy encKey dat
 	return $ FileURI hsh encKey Nothing
+
+storePrivateKey :: KeyID -> PrivateKey -> IO ()
+storePrivateKey kid pKey = do
+	let bs = BUL.fromString $ JSON.toString $ toJson pKey
+	storeFile' ["privatekeys", hashToHex kid] bs
+	fPath <- toFullPath $ joinPath ["privatekeys", hashToHex kid]
+	setFileMode fPath $ unionFileModes ownerWriteMode ownerReadMode

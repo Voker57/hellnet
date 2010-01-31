@@ -26,6 +26,7 @@ module Hellnet.Network (
 	, findChunk
 	, findChunks
 	, findFile
+	, findKey
 	, findMetaContent
 	, findMetaContent'
 	, findMetaValue
@@ -39,6 +40,7 @@ module Hellnet.Network (
 	, writeNodesList
 	) where
 
+import Codec.Crypto.RSA as RSA
 import Codec.Utils
 import Control.Concurrent
 import Control.Monad
@@ -66,7 +68,7 @@ import qualified Data.ByteString.Lazy.UTF8 as BUL
 import Random
 import Safe
 import System.IO.Error
-import Text.HJson as Json
+import Text.HJson as JSON
 import Text.JSON.JPath
 
 getNodesList :: IO [Node]
@@ -253,7 +255,7 @@ verifyMeta meta
 				maybe (return Nothing) (\k -> do
 					return $ Just $ verifyAsym k msg sig
 					) $ fromJson j
-				) $ Json.fromString str
+				) $ JSON.fromString str
 			) keyChunk
 
 fetchMeta :: KeyID -> String -> IO Bool
@@ -299,7 +301,7 @@ findMetaContent m = do
 	cont <- findURI (contentURI m)
 	return $ case cont of
 		Nothing -> Nothing
-		Just bs -> case Json.fromString (BUL.toString bs) of
+		Just bs -> case JSON.fromString (BUL.toString bs) of
 			Left _ -> Nothing
 			Right js -> Just js
 
@@ -308,7 +310,7 @@ findMetaContent' m = do
 	cont <- findURI (contentURI m)
 	return $ case cont of
 		Nothing -> Nothing
-		Just bs -> case Json.fromString (BUL.toString bs) of
+		Just bs -> case JSON.fromString (BUL.toString bs) of
 			Left _ -> Nothing
 			Right js -> Just $ BUL.toString bs
 
@@ -339,3 +341,10 @@ findURI uri = case uri of
 		fil <- findFile key hsh
 		return $ either (const Nothing) (Just) fil
 	otherwise -> return Nothing
+
+findKey :: KeyID -> IO (Maybe PublicKey)
+findKey kid = do
+	ch <- findChunk Nothing kid
+	return $ case ch of
+		Nothing -> Nothing
+		Just chunk -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString $ chunk
