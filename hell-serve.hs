@@ -20,6 +20,8 @@ import Control.Monad
 import qualified Data.Map as Map
 import Data.Maybe
 import qualified Data.ByteString.Char8 as BS8
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.UTF8 as BUL
 import Hellnet.Storage
 import Hellnet.Network
 import Network.HTTP.Lucu as Lucu
@@ -29,9 +31,9 @@ import System.Environment
 handShakeOut = do
 	fD <- inputForm(1000)
 	host <- getRemoteAddr'
-	let fMap = Map.fromList fD
+	let fMap = Map.fromList $ map (\fd -> (fdName fd, fdContent fd)) fD
 	if "port" `Map.member` fMap && (not $ host `elem` ["localhost","127.0.0.1"]) then do
-		let node = (host, read $ Map.findWithDefault "0" "port" fMap)
+		let node = (host, read $ BUL.toString $ Map.findWithDefault (BUL.fromString "0") "port" fMap)
 		res <- liftIO $ queryNodeGet "hello" node
 		if res /= Nothing then do
 			r <- liftIO $ addNode node
@@ -73,6 +75,6 @@ main = do
 		,(["hello"], helloRes)
 		,(["handshake"], handShakeRes)
 		]
-	storeFile "serverport" (BS8.pack $ show port)
+	storeFile "serverport" (BUL.fromString $ show port)
 	putStrLn $ "Listening on port " ++ show port
 	runHttpd config resources []
