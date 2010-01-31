@@ -55,6 +55,7 @@ import qualified Data.ByteString.Lazy as BSL
 -- import OpenSSL.DSA
 import System.Directory
 import System.FilePath
+import System.IO
 import System.Posix.Files
 import Text.JSON.JPath
 import Text.HJson
@@ -105,7 +106,16 @@ storeFile :: FilePath -> BSL.ByteString -> IO ()
 storeFile fpath dat = do
 	fullPath <- toFullPath fpath
 	createDirectoryIfMissing True (dropFileName fullPath)
-	BSL.writeFile fullPath dat
+	(tmpf, tmph) <- openTempFile "/tmp" "helltemp"
+	BSL.hPut tmph dat
+	hFlush tmph
+	hClose tmph
+	let copyMove = do
+		copyFile tmpf fullPath
+		removeFile tmpf
+	catch (renameFile tmpf fullPath) (\e -> case e of
+		illegalOperationErrorType -> copyMove
+		otherwise -> ioError e)
 
 storeFile' :: [String] -> BSL.ByteString -> IO ()
 storeFile' fs = storeFile (joinPath fs)
