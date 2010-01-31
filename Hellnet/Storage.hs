@@ -25,6 +25,7 @@ module Hellnet.Storage (
 	, getMetaNames
 	, hashToPath
 	, insertChunk
+	, insertData
 	, insertFileContents
 	, insertFileContentsLazy
 	, isStored
@@ -44,6 +45,7 @@ import Data.Maybe
 import Hellnet
 import Hellnet.Crypto
 import Hellnet.Meta as Meta
+import Hellnet.URI
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BU
@@ -165,3 +167,11 @@ getDirectory fpath = do
 
 getDirectory' :: [FilePath] -> IO (Maybe [FilePath])
 getDirectory' = getDirectory . joinPath
+
+insertData :: Maybe Key -> BSL.ByteString -> IO HellnetURI
+insertData encKey dat = if BSL.null $ BSL.drop (256 * 1024) dat then do
+	hsh <- insertChunk encKey dat
+	return $ ChunkURI hsh encKey Nothing
+	else do
+	hsh <- insertFileContentsLazy encKey dat
+	return $ FileURI hsh encKey Nothing

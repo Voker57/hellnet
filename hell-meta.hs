@@ -15,11 +15,17 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+import qualified Data.ByteString.Lazy.UTF8 as BUL
+import qualified Data.ByteString.Lazy as BSL
 import Hellnet
+import Hellnet.Meta as Meta
 import Hellnet.Network
 import Hellnet.Storage
 import Hellnet.Utils
 import System.Environment
+import System.Exit
+import System.IO
+import System.Cmd
 import Text.HJson as JSON
 
 fetchMetaPrintResult :: KeyID -> String -> IO ()
@@ -46,3 +52,37 @@ main = do
 			case vs of
 				Nothing -> error "Meta not found"
 				Just a -> mapM_ (putStrLn . JSON.toString) $ a
+		["get", keyidHex, mname] -> do
+			let keyid = hexToHash keyidHex
+			vs <- findMetaValue keyid mname "/"
+			case vs of
+				Nothing -> error "Meta not found"
+				Just a -> mapM_ (putStrLn . JSON.toString) $ a
+		["get", keyidHex] -> do
+			let keyid = hexToHash keyidHex
+			vs <- getMetaNames keyid
+			mapM_ (putStrLn) vs
+		["edit", keyidHex, mname] -> do
+			let keyid = hexToHash keyidHex
+			v <- getMeta keyid mname
+			case v of
+				Nothing -> fail "Meta not found"
+				Just meta -> do
+					cont <- findMetaContent' meta
+					case cont of
+						Nothing -> fail "Meta content not found"
+						Just cs -> do
+							(fP, hdl) <- openTempFile "/tmp" "hellnetmeta"
+							hPutStr hdl cs
+							hClose hdl
+							returnCode <- rawSystem "editor" [fP]
+							case returnCode of
+								ExitFailure i -> fail $ "editor failed with code: " ++ show i
+								ExitSuccess -> do
+									modified <- readFile fP
+									case JSON.fromString modified of
+										Left errmsg -> fail $ "JSON parsing error: " ++ errmsg
+										Right _ -> do
+											uri <- insertData Nothing (BUL.fromString modified)
+											let newmeta = meta {contentURI = uri}
+											storeMeta newmeta

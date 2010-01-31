@@ -26,6 +26,8 @@ module Hellnet.Network (
 	, findChunk
 	, findChunks
 	, findFile
+	, findMetaContent
+	, findMetaContent'
 	, findMetaValue
 	, findURI
 	, getContactLog
@@ -292,6 +294,23 @@ fetchMetaFromNode node keyId mName = do
 		return meta
 		) result
 
+findMetaContent :: Meta -> IO (Maybe Json)
+findMetaContent m = do
+	cont <- findURI (contentURI m)
+	return $ case cont of
+		Nothing -> Nothing
+		Just bs -> case Json.fromString (BUL.toString bs) of
+			Left _ -> Nothing
+			Right js -> Just js
+
+findMetaContent' :: Meta -> IO (Maybe String)
+findMetaContent' m = do
+	cont <- findURI (contentURI m)
+	return $ case cont of
+		Nothing -> Nothing
+		Just bs -> case Json.fromString (BUL.toString bs) of
+			Left _ -> Nothing
+			Right js -> Just $ BUL.toString bs
 
 findMetaValue :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name
@@ -302,10 +321,10 @@ findMetaValue keyId mName mPath = do
 	case meta of
 		Nothing -> return Nothing
 		Just m -> do
-			conts <- findURI (contentURI m)
-			case conts of
+			cont <- findMetaContent m
+			case cont of
 				Nothing -> return Nothing
-				Just cs -> return $ either (const Nothing) (Just) $ jPath mPath (BUL.toString cs)
+				Just j -> return $ Just $ jPath' mPath j
 
 fetchNodeListFromNode :: Node -> IO [Node]
 fetchNodeListFromNode node = do
