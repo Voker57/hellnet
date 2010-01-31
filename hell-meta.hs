@@ -84,5 +84,5 @@ main = do
 										Left errmsg -> fail $ "JSON parsing error: " ++ errmsg
 										Right _ -> do
 											uri <- insertData Nothing (BUL.fromString modified)
-											let newmeta = meta {contentURI = uri}
+											newmeta <- regenMeta $ meta {contentURI = uri}
 											storeMeta newmeta
