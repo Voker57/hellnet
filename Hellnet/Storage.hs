@@ -60,6 +60,7 @@ import qualified Data.ByteString.Lazy as BSL
 import System.Directory
 import System.FilePath
 import System.IO
+import System.IO.Error
 import System.Posix.Files
 import System.Random
 import Text.JSON.JPath
@@ -118,9 +119,7 @@ storeFile fpath dat = do
 	let copyMove = do
 		copyFile tmpf fullPath
 		removeFile tmpf
-	catch (renameFile tmpf fullPath) (\e -> case e of
-		illegalOperationErrorType -> copyMove
-		otherwise -> ioError e)
+	catch (renameFile tmpf fullPath) (\e -> if isIllegalOperation e then copyMove else ioError e)
 
 storeFile' :: [String] -> BSL.ByteString -> IO ()
 storeFile' fs = storeFile (joinPath fs)
