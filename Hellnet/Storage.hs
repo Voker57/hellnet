@@ -16,13 +16,15 @@
 --------------------------------------------------------------------------------
 
 module Hellnet.Storage (
-	getChunk
+	Hellnet.Storage.generateKeyPair
+	, getChunk
 	, getDirectory
 	, getDirectory'
 	, getFile
 	, getFile'
 	, getMeta
 	, getMetaNames
+	, getPrivateKey
 	, hashToPath
 	, insertChunk
 	, insertData
@@ -59,6 +61,7 @@ import System.Directory
 import System.FilePath
 import System.IO
 import System.Posix.Files
+import System.Random
 import Text.JSON.JPath
 import Text.HJson as JSON
 
@@ -194,3 +197,18 @@ storePrivateKey kid pKey = do
 	storeFile' ["privatekeys", hashToHex kid] bs
 	fPath <- toFullPath $ joinPath ["privatekeys", hashToHex kid]
 	setFileMode fPath $ unionFileModes ownerWriteMode ownerReadMode
+
+generateKeyPair :: IO KeyID
+generateKeyPair = do
+	g <- newStdGen
+	let (pub, priv, _) = RSA.generateKeyPair g 1024
+	hsh <- insertChunk Nothing $ BUL.fromString $ JSON.toString $ toJson pub
+	storePrivateKey hsh priv
+	return hsh
+
+getPrivateKey :: KeyID -> IO (Maybe PrivateKey)
+getPrivateKey kid = do
+	fil <- getFile' ["privatekeys", hashToHex kid]
+	return $ case fil of
+		Nothing -> Nothing
+		Just k -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString k

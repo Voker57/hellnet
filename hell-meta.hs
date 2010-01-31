@@ -86,3 +86,7 @@ main = do
 											uri <- insertData Nothing (BUL.fromString modified)
 											newmeta <- regenMeta $ meta {contentURI = uri}
 											storeMeta newmeta
+		["genkey"] -> do
+			putStrLn "Generating keys..."
+			keyID <- generateKeyPair
+			putStrLn $ "Your key ID is " ++ hashToHex keyID

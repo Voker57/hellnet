@@ -14,13 +14,14 @@ import Codec.Encryption.AES as AES
 import Codec.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Char8 as BS8
 import Data.Digest.SHA512 as SHA512
 import Data.LargeWord
 import System.Random
 import qualified Data.Map as Map
 import Hellnet
-import Text.HJson
+import Text.HJson as JSON
 import Safe
 import System.Posix.Files
 
@@ -29,12 +30,6 @@ decryptSym key os = BSL.pack $  listToOctets $ map (AES.decrypt ((fromOctets 256
 
 encryptSym :: [Octet] -> BSL.ByteString -> BSL.ByteString
 encryptSym key os = BSL.pack $ listToOctets $ map (AES.encrypt ((fromOctets 256 key) :: Word256)) $ listFromOctets $ BSL.unpack os
-
-generateKeyPair :: IO (PublicKey, PrivateKey)
-generateKeyPair = do
-	g <- newStdGen
-	let (pub, priv, _) = RSA.generateKeyPair g 1024
-	return (pub, priv)
 
 instance Jsonable PublicKey where
 	toJson pk = toJson $ Map.fromList [
