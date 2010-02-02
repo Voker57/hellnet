@@ -32,6 +32,7 @@ module Hellnet.Storage (
 	, insertFileContentsLazy
 	, isStored
 	, purgeChunk
+	, regenMeta
 	, storeFile
 	, storeFile'
 	, storeMeta
@@ -119,7 +120,7 @@ storeFile fpath dat = do
 	let copyMove = do
 		copyFile tmpf fullPath
 		removeFile tmpf
-	catch (renameFile tmpf fullPath) (\e -> if isIllegalOperation e then copyMove else ioError e)
+	catch (renameFile tmpf fullPath) (\e -> copyMove)
 
 storeFile' :: [String] -> BSL.ByteString -> IO ()
 storeFile' fs = storeFile (joinPath fs)
@@ -211,3 +212,15 @@ getPrivateKey kid = do
 	return $ case fil of
 		Nothing -> Nothing
 		Just k -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString k
+
+regenMeta :: Meta -> IO (Maybe Meta)
+regenMeta meta = do
+	pKeyM <- getPrivateKey (keyID meta)
+	case pKeyM of
+		Nothing -> return Nothing
+		Just pKey -> do
+			updatedV <- getUnixTime
+			let sigV = BUL.fromString "FOOBAR"
+			let messageV = BUL.fromString $ toString $ toJson $ meta {timestamp = updatedV}
+			let sigV = signAsym pKey messageV
+			return $ Just $ meta {timestamp = updatedV, message = Just messageV, signature = Just sigV}

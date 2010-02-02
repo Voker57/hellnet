@@ -84,9 +84,25 @@ main = do
 										Left errmsg -> fail $ "JSON parsing error: " ++ errmsg
 										Right _ -> do
 											uri <- insertData Nothing (BUL.fromString modified)
-											newmeta <- regenMeta $ meta {contentURI = uri}
-											storeMeta newmeta
+											newmetaM <- regenMeta $ meta {contentURI = uri}
+											case newmetaM of
+												Nothing -> fail "Failed to re-sign meta"
+												Just newmeta -> storeMeta newmeta
 		["genkey"] -> do
 			putStrLn "Generating keys..."
 			keyID <- generateKeyPair
 			putStrLn $ "Your key ID is " ++ hashToHex keyID
+		["new", keyidHex, mname] -> do
+			let keyid = hexToHash keyidHex
+			emptyUri <- insertData Nothing $ BUL.fromString "{}"
+			newMetaM <- regenMeta Meta {
+				contentURI = emptyUri,
+				keyID = keyid,
+				timestamp = 0,
+				message = Nothing,
+				signature = Nothing,
+				metaName = mname
+				}
+			case newMetaM of
+				Nothing -> fail "Failed to sign meta"
+				Just newMeta -> storeMeta newMeta

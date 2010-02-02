@@ -1,4 +1,4 @@
-module Hellnet.Meta (Meta(..), fromByteString, toByteString, regenMeta) where
+module Hellnet.Meta (Meta(..), fromByteString, toByteString) where
 
 import Codec.Crypto.RSA
 import qualified Data.ByteString.Lazy as BSL
@@ -54,17 +54,13 @@ instance Jsonable Meta where
 fromByteString :: BSL.ByteString -> Maybe Meta
 fromByteString bs = let
 	(s, sig) = breakLazySubstring (BSL8.pack "\n\n") bs;
-	js = BUL.toString s in
-		either (const Nothing) (fromJson) $ Json.fromString js
+	js = BUL.toString s
+	pM = either (const Nothing) (fromJson) $ Json.fromString js in
+		case pM of
+			Nothing -> Nothing
+			Just preMeta -> Just $ preMeta { message = Just s, signature = Just sig}
 
 toByteString :: Meta -> BSL.ByteString
 toByteString m = case (message m, signature m) of
 	(Just msg, Just sig) -> BSL.concat [msg, BSL8.pack "\n\n", sig]
 	otherwise -> BSL.empty
-
-regenMeta :: Meta -> IO Meta
-regenMeta m = do
-	updatedV <- getUnixTime
-	let sigV = BUL.fromString "FOOBAR"
-	let messageV = BUL.fromString $ toString $ toJson $ m {timestamp = updatedV}
-	return $ m {timestamp = updatedV, message = Just messageV, signature = Just sigV}
