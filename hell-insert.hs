@@ -30,14 +30,12 @@ import System.Environment (getArgs)
 import System.FilePath
 import System.IO
 
-data Opts = Opts {encKey :: (Maybe String), encrypt :: Bool,  chunk :: Bool}
+data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
-	Option ['k'] ["key"]
-		(ReqArg (\s o -> o {encKey = Just s}) "key") "Encrypt with specified key",
 	Option ['e'] ["encrypt"]
-		(NoArg (\o -> o {encrypt = True})) "Encrypt file",
+		(OptArg (\s o -> o {encKey = maybe (Nothing) (Just . hexToHash) s, encrypt = True}) "key") "Encrypt (optionally with specified key)",
 	Option ['c'] ["chunk"]
 		(NoArg (\o -> o {chunk = True})) "Add file as single chunk (Only for files < 256 kB)"
 	]
@@ -67,8 +65,11 @@ main = do
  	let (opts, argz, errs) = getOpt Permute options args
 	let optz = processOptions defaultOptions opts
 	when (or [(not . null $ errs), (null argz)]) (fail $ (usageInfo "Usage: hell-insert [file] file1 [file2...]" options) ++ concat errs)
-	theKey <- maybe (genKey) (return . hexToHash) (encKey optz)
-	if chunk optz then
-		mapM (insertChunkPrintHash (if encrypt optz then (Just $ theKey) else Nothing)) argz
+	theKey <- if encrypt optz then
+		maybe (genKey >>= return . Just) (return . Just) (encKey optz)
 		else
-		mapM (insertFilePrintHash (if encrypt optz then (Just $ theKey) else Nothing)) argz
+		return Nothing
+	if chunk optz then
+		mapM (insertChunkPrintHash theKey) argz
+		else
+		mapM (insertFilePrintHash theKey) argz
