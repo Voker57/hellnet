@@ -15,6 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+import Control.Monad
 import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Lazy as BSL
 import Hellnet
@@ -22,11 +23,32 @@ import Hellnet.Meta as Meta
 import Hellnet.Network
 import Hellnet.Storage
 import Hellnet.Utils
+import System.Console.GetOpt
 import System.Environment
 import System.Exit
 import System.IO
 import System.Cmd
 import Text.HJson as JSON
+
+data Opts = Opts {
+	encrypt :: Bool,
+	encKey :: Maybe Key,
+	updateMeta :: Bool
+	}
+
+options :: [OptDescr (Opts -> Opts)]
+options = [
+	Option ['e'] ["encrypt"]
+		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
+	Option ['u'] ["update-meta"]
+		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval"
+	]
+
+defaultOptions = Opts {
+	encrypt = False,
+	encKey = Nothing,
+	updateMeta = False
+	}
 
 fetchMetaPrintResult :: KeyID -> String -> IO ()
 fetchMetaPrintResult keyid mname = do
@@ -37,7 +59,14 @@ fetchMetaPrintResult keyid mname = do
 				False -> "Meta "++ metaName ++" unchanged"
 
 main = do
-	args <- getArgs
+	argz <- getArgs
+	let (optz, args, errs) = getOpt Permute options argz
+	let opts = processOptions defaultOptions optz
+	theKey <- if encrypt opts then
+		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
+		else
+		return Nothing
+	print theKey
 	case args of
 		["update", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
@@ -48,12 +77,14 @@ main = do
 			mapM_ (fetchMetaPrintResult keyid) allmeta
 		["get", keyidHex, mname, mpath] -> do
 			let keyid = hexToHash keyidHex
+			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			vs <- findMetaValue keyid mname mpath
 			case vs of
 				Nothing -> error "Meta not found"
 				Just a -> mapM_ (putStrLn . JSON.toString) $ a
 		["get", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
+			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			metaM <- getMeta keyid mname
 			case metaM of
 				Nothing -> error "Meta not found"
@@ -68,6 +99,7 @@ main = do
 			mapM_ (putStrLn) vs
 		["edit", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
+			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			v <- getMeta keyid mname
 			case v of
 				Nothing -> error "Meta not found"
@@ -87,18 +119,19 @@ main = do
 									case JSON.fromString modified of
 										Left errmsg -> error $ "JSON parsing error: " ++ errmsg
 										Right _ -> do
-											uri <- insertData Nothing (BUL.fromString modified)
+											uri <- insertData theKey (BUL.fromString modified)
 											newmetaM <- regenMeta $ meta {contentURI = uri}
 											case newmetaM of
 												Nothing -> error "Failed to re-sign meta"
 												Just newmeta -> storeMeta newmeta
 		["replace", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
+			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			contentV <- getContents
 			case JSON.fromString contentV of
 				Left errmsg -> error $ "JSON parsing error: " ++ errmsg
 				Right _ -> do
-					contentURIV <- insertData Nothing (BUL.fromString contentV)
+					contentURIV <- insertData theKey (BUL.fromString contentV)
 					newMetaM <- regenMeta Meta {
 						contentURI = contentURIV,
 						keyID = keyid,
@@ -116,7 +149,7 @@ main = do
 			putStrLn $ "Your key ID is " ++ hashToHex keyID
 		["new", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
-			emptyUri <- insertData Nothing $ BUL.fromString "{}"
+			emptyUri <- insertData theKey $ BUL.fromString "{}"
 			newMetaM <- regenMeta Meta {
 				contentURI = emptyUri,
 				keyID = keyid,
