@@ -92,6 +92,24 @@ main = do
 											case newmetaM of
 												Nothing -> error "Failed to re-sign meta"
 												Just newmeta -> storeMeta newmeta
+		["replace", keyidHex, mname] -> do
+			let keyid = hexToHash keyidHex
+			contentV <- getContents
+			case JSON.fromString contentV of
+				Left errmsg -> error $ "JSON parsing error: " ++ errmsg
+				Right _ -> do
+					contentURIV <- insertData Nothing (BUL.fromString contentV)
+					newMetaM <- regenMeta Meta {
+						contentURI = contentURIV,
+						keyID = keyid,
+						timestamp = 0,
+						message = Nothing,
+						signature = Nothing,
+						metaName = mname
+						}
+					case newMetaM of
+						Nothing -> error "Failed to sign meta"
+						Just newMeta -> storeMeta newMeta
 		["genkey"] -> do
 			putStrLn "Generating keys..."
 			keyID <- generateKeyPair
