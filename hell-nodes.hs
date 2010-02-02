@@ -43,11 +43,11 @@ main = do
 		["discover"] -> do
 			when (null nodes) (fail "Need at least one pre-discovered node! Use `hell-nodes handshake` to manually discover one")
 			moreNodes <- mapM (fetchNodeListFromNode) nodes
+			!nodes2 <- getNodesList -- Because we need it after discovery, to reduce desync
 			let nset = Set.unions $ map (Set.fromList) (moreNodes)
-			putStrLn $ show (length $ Set.toList $ Set.difference nset $ Set.fromList nodes) ++ " new nodes discovered"
-			writeNodesList $ Set.toList $ Set.union (Set.fromList nodes) nset
+			putStrLn $ show (length $ Set.toList $ Set.difference nset $ Set.fromList nodes2) ++ " new nodes discovered"
+			writeNodesList $ Set.toList $ Set.union (Set.fromList nodes2) nset
 			putStrLn "Handshaking..."
 			results <- mapM (handshakeWithNode) $ Set.toList nset
 			putStrLn $ (show $ length $ filter (id) results) ++ " out of " ++ (show $ length results) ++ " handshakes successful."
-
 		otherwise -> putStrLn "Usage: hell-nodes {add,rm,clear,list, discover} <host> <port>"
