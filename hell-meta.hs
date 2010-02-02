@@ -54,10 +54,14 @@ main = do
 				Just a -> mapM_ (putStrLn . JSON.toString) $ a
 		["get", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
-			vs <- findMetaValue keyid mname "/"
-			case vs of
+			metaM <- getMeta keyid mname
+			case metaM of
 				Nothing -> error "Meta not found"
-				Just a -> mapM_ (putStrLn . JSON.toString) $ a
+				Just meta -> do
+					contentM <- findMetaContent' meta
+					case contentM of
+						Nothing -> error "Meta content not found"
+						Just content -> putStr content
 		["get", keyidHex] -> do
 			let keyid = hexToHash keyidHex
 			vs <- getMetaNames keyid
