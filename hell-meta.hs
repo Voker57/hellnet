@@ -70,27 +70,27 @@ main = do
 			let keyid = hexToHash keyidHex
 			v <- getMeta keyid mname
 			case v of
-				Nothing -> fail "Meta not found"
+				Nothing -> error "Meta not found"
 				Just meta -> do
 					cont <- findMetaContent' meta
 					case cont of
-						Nothing -> fail "Meta content not found"
+						Nothing -> error "Meta content not found"
 						Just cs -> do
 							(fP, hdl) <- openTempFile "/tmp" "hellnetmeta"
 							hPutStr hdl cs
 							hClose hdl
 							returnCode <- rawSystem "editor" [fP]
 							case returnCode of
-								ExitFailure i -> fail $ "editor failed with code: " ++ show i
+								ExitFailure i -> error $ "editor failed with code: " ++ show i
 								ExitSuccess -> do
 									modified <- readFile fP
 									case JSON.fromString modified of
-										Left errmsg -> fail $ "JSON parsing error: " ++ errmsg
+										Left errmsg -> error $ "JSON parsing error: " ++ errmsg
 										Right _ -> do
 											uri <- insertData Nothing (BUL.fromString modified)
 											newmetaM <- regenMeta $ meta {contentURI = uri}
 											case newmetaM of
-												Nothing -> fail "Failed to re-sign meta"
+												Nothing -> error "Failed to re-sign meta"
 												Just newmeta -> storeMeta newmeta
 		["genkey"] -> do
 			putStrLn "Generating keys..."
@@ -108,5 +108,5 @@ main = do
 				metaName = mname
 				}
 			case newMetaM of
-				Nothing -> fail "Failed to sign meta"
+				Nothing -> error "Failed to sign meta"
 				Just newMeta -> storeMeta newMeta
