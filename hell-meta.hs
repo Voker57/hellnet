@@ -18,6 +18,7 @@
 import Control.Monad
 import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Lazy as BSL
+import Data.List
 import Hellnet
 import Hellnet.Meta as Meta
 import Hellnet.Network
@@ -66,7 +67,6 @@ main = do
 		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
 		else
 		return Nothing
-	print theKey
 	case args of
 		["update", keyidHex, mname] -> do
 			let keyid = hexToHash keyidHex
@@ -161,3 +161,14 @@ main = do
 			case newMetaM of
 				Nothing -> error "Failed to sign meta"
 				Just newMeta -> storeMeta newMeta
+		otherwise ->
+			let usageStrings =  [ "",
+				"update <key id> [<meta name>]    -- Update selected meta or all metas signed by key",
+				"get <key id>                     -- output all meta names signed by key, one per line",
+				"get <key id> <meta name>         -- display contents of meta",
+				"get <key id> <meta name> <jpath> -- Display results of running jPath expression on meta content, one result per line",
+				"edit <key id> <meta name>        -- launches `editor` to edit specified meta",
+				"replace <key id> <meta name>     -- replaces meta contents with data from STDIN.",
+				"genkey                           -- generates new key pair, displays key ID",
+				"new <key id> <meta name>         -- creates new empty meta"
+				] in error $ usageInfo (intercalate "\n" $ map ("hell-meta "++) usageStrings) options ++ concat errs
