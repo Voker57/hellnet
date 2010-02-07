@@ -39,5 +39,6 @@ getChunkAppendToFile encKey fname hsh = do
 
 downloadFile :: Maybe Key -> FilePath -> [Hash] -> IO ()
 downloadFile encKey fname hs = do
+	writeFile fname ""
 	mapM (getChunkAppendToFile encKey fname) hs
 	return ()
