@@ -207,7 +207,6 @@ fetchFile' encKey cs = do
 queryNodeGet :: String -> Node -> IO (Maybe BSL.ByteString)
 queryNodeGet s node = do
 	rep <- ((return . Just) =<< simpleHTTP (mkRequest GET $ mkUrl node s)) `catch` const (return Nothing)
-	print rep
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
 
 queryNodePost :: String -> [(String, String)] -> Node -> IO (Maybe BSL.ByteString)

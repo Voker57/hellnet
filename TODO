@@ -17,6 +17,7 @@ Non-trivial
 
  * Protect (more) against connecting to localhost
  * Logging
+ * Transactional inserts
 
 Requires more thinking
 
