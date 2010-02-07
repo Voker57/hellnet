@@ -29,6 +29,8 @@ module Hellnet.Network (
 	, findKey
 	, findMetaContent
 	, findMetaContent'
+	, findMetaContentByName
+	, findMetaContentByName'
 	, findMetaValue
 	, findURI
 	, getContactLog
@@ -298,10 +300,10 @@ fetchMetaFromNode node keyId mName = do
 
 findMetaContent :: Meta -> IO (Maybe Json)
 findMetaContent m = do
-	cont <- findURI (contentURI m)
+	cont <- findMetaContent' m
 	return $ case cont of
 		Nothing -> Nothing
-		Just bs -> case JSON.fromString (BUL.toString bs) of
+		Just s -> case JSON.fromString s of
 			Left _ -> Nothing
 			Right js -> Just js
 
@@ -313,6 +315,20 @@ findMetaContent' m = do
 		Just bs -> case JSON.fromString (BUL.toString bs) of
 			Left _ -> Nothing
 			Right js -> Just $ BUL.toString bs
+
+findMetaContentByName :: KeyID -> String -> IO (Maybe Json)
+findMetaContentByName kid mname = do
+	metaM <- getMeta kid mname
+	case metaM of
+		Nothing -> return Nothing
+		Just meta -> findMetaContent meta
+
+findMetaContentByName' :: KeyID -> String -> IO (Maybe String)
+findMetaContentByName' kid mname = do
+	metaM <- getMeta kid mname
+	case metaM of
+		Nothing -> return Nothing
+		Just meta -> findMetaContent' meta
 
 findMetaValue :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name

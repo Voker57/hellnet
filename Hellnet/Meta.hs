@@ -25,6 +25,15 @@ data Meta = Meta {
 	, signature :: Maybe Signature -- ^ Digital signature
 	} deriving (Eq, Show)
 
+emptyMeta = Meta {
+	keyID = [] -- ^ Public key ID
+	, metaName = "" -- ^ Meta name
+	, timestamp = 0 -- ^ Updated timestamp
+	, contentURI = ChunkURI [] Nothing Nothing -- ^ Meta content location
+	, message = Nothing -- ^ JSON as ByteString
+	, signature = Nothing -- ^ Digital signature
+}
+
 instance Jsonable Meta where
 	fromJson v = let
 		keyIDV = jPath' "key" v;
