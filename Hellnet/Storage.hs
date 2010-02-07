@@ -104,13 +104,13 @@ insertChunk encKey ch = do
 getChunk :: Maybe Key -> Hash -> IO (Maybe Chunk)
 getChunk key hsh = do
 	let chunkKey = hashToHex hsh
-	filepath <- toFullPath (joinPath ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)])
-	fil <- getFile filepath
+	fil <- getFile' ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)]
 	return $ maybe Nothing (\conts -> Just (maybe (conts) (\k -> decryptSym k conts) key)) fil
 
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
-	dir <- getAppUserDataDirectory "hellnet"
+	dirEnv <- safeGetEnv "HELLNET_HOME"
+	dir <- maybe (getAppUserDataDirectory "hellnet") (return) dirEnv
 	return (joinPath [dir,fpath])
 
 storeFile :: FilePath -> BSL.ByteString -> IO ()

@@ -30,6 +30,7 @@ module Hellnet.Utils (
 	, mkUrl
 	, processOptions
 	, relaxByteString
+	, safeGetEnv
 	, shuffle
 	, simpleOpts
 	, splitBsFor
@@ -58,6 +59,8 @@ import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import qualified Data.ByteString.Lazy as BSL
 import Random
 import Safe
+import System.Environment
+import System.IO.Error
 import System.Locale
 import Text.PrettyPrint.HughesPJ (render)
 
@@ -170,3 +173,6 @@ breakLazySubstring pat src = search 0 src
 			| BSL.null s = (src,BSL.empty) -- not found
 			| pat `BSL.isPrefixOf` s = (BSL.take n src,s)
 			| otherwise = search (n+1) (BSL.tail s)
+
+safeGetEnv :: String -> IO (Maybe String)
+safeGetEnv name = catch (getEnv name >>= (return . Just)) (\e -> if isDoesNotExistError e then return Nothing else ioError e)
