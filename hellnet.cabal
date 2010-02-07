@@ -7,9 +7,11 @@ Build-type: Simple
 Cabal-version: >= 1.2
 library
  Exposed-Modules: Hellnet
+  Hellnet.Crypto
   Hellnet.Files
   Hellnet.Utils
   Hellnet.Storage
+  Hellnet.Meta
   Hellnet.Network
   Hellnet.URI
  Build-Depends: base >= 4.2, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 2.0, hjson >= 1.1, safe >= 0.2, old-locale, time, unix, parsec, random, process, utf8-string, RSA, uri >= 0.1.2
