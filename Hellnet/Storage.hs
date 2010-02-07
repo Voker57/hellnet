@@ -15,6 +15,8 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Hellnet.Storage (
 	Hellnet.Storage.generateKeyPair
 	, getChunk
@@ -22,6 +24,7 @@ module Hellnet.Storage (
 	, getDirectory'
 	, getFile
 	, getFile'
+	, getKeyAliases
 	, getMeta
 	, getMetaNames
 	, getPrivateKey
@@ -35,6 +38,7 @@ module Hellnet.Storage (
 	, regenMeta
 	, storeFile
 	, storeFile'
+	, storeKeyAliases
 	, storeMeta
 	, storePrivateKey
 	, toFullPath
@@ -57,6 +61,7 @@ import qualified Data.ByteString.UTF8 as BU
 import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Map as Map
 -- import OpenSSL.DSA
 import System.Directory
 import System.FilePath
@@ -224,3 +229,23 @@ regenMeta meta = do
 			let messageV = BUL.fromString $ toString $ toJson $ meta {timestamp = updatedV}
 			let sigV = signAsym pKey messageV
 			return $ Just $ meta {timestamp = updatedV, message = Just messageV, signature = Just sigV}
+
+instance Jsonable (Map.Map String KeyID) where
+	toJson m = JObject $ Map.map (stringifyValue) m where
+		stringifyValue v = JString $ hashToHex v
+	fromJson (JObject m) = Just $ Map.map (hexToHash . unStringifyValue) m where
+		unStringifyValue (JString v) = v
+		unStringifyValue _ = ""
+	fromJson _ = Nothing
+
+getKeyAliases :: IO (Map.Map String KeyID)
+getKeyAliases = do
+	aliasesFileM <- getFile "keyaliases"
+	return $ case aliasesFileM of
+		Nothing -> Map.empty
+		Just aliasesFile -> case JSON.fromString $ BUL.toString aliasesFile of
+			Left _ -> Map.empty
+			Right j -> fromMaybe (Map.empty) $ fromJson j
+
+storeKeyAliases :: Map.Map String KeyID -> IO ()
+storeKeyAliases m = storeFile "keyaliases" $ BUL.fromString $ JSON.toString $ toJson m

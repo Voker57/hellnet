@@ -18,6 +18,7 @@
 import Control.Monad
 import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Map as Map
 import Data.List
 import Hellnet
 import Hellnet.Meta as Meta
@@ -61,6 +62,7 @@ fetchMetaPrintResult keyid mname = do
 
 main = do
 	argz <- getArgs
+	keyAliases <- getKeyAliases
 	let (optz, args, errs) = getOpt Permute options argz
 	let opts = processOptions defaultOptions optz
 	theKey <- if encrypt opts then
@@ -161,6 +163,15 @@ main = do
 			case newMetaM of
 				Nothing -> error "Failed to sign meta"
 				Just newMeta -> storeMeta newMeta
+		["alias", "add", name, keyidHex] -> do
+			let keyid = hexToHash keyidHex
+			storeKeyAliases $ Map.insert name keyid keyAliases
+		["alias", "rm", name] -> do
+			storeKeyAliases $ Map.delete name keyAliases
+		["alias", "show", name] -> do
+			putStrLn $ maybe (error "Alias not found") (hashToHex) $ Map.lookup name keyAliases
+		["alias", "list"] -> do
+			mapM_ (\(k, v) -> putStrLn $ k ++ ": " ++ hashToHex v) $ Map.toList keyAliases
 		otherwise ->
 			let usageStrings =  [ "",
 				"update <key id> [<meta name>]    -- Update selected meta or all metas signed by key",
@@ -170,5 +181,9 @@ main = do
 				"edit <key id> <meta name>        -- launches `editor` to edit specified meta",
 				"replace <key id> <meta name>     -- replaces meta contents with data from STDIN.",
 				"genkey                           -- generates new key pair, displays key ID",
-				"new <key id> <meta name>         -- creates new empty meta"
+				"new <key id> <meta name>         -- creates new empty meta",
+				"alias add <name> <key id>        -- adds new key alias",
+				"alias rm <name>                  -- removes key alias",
+				"alias show <name>                -- resolves alias to key id",
+				"alias list                       -- shows all the aliases with their names"
 				] in error $ usageInfo (intercalate "\n" $ map ("hell-meta "++) usageStrings) options ++ concat errs
