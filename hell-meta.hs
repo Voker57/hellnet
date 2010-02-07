@@ -64,7 +64,6 @@ fetchMetaPrintResult keyid mname = do
 main = do
 	argz <- getArgs
 	keyAliases <- getKeyAliases
-	let resolveKey name = fromMaybe (hexToHash name) $ Map.lookup name keyAliases
 	let (optz, args, errs) = getOpt Permute options argz
 	let opts = processOptions defaultOptions optz
 	theKey <- if encrypt opts then
@@ -73,21 +72,21 @@ main = do
 		return Nothing
 	case args of
 		["update", keyidHex, mname] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			fetchMetaPrintResult keyid mname
 		["update", keyidHex] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			allmeta <- getMetaNames keyid
 			mapM_ (fetchMetaPrintResult keyid) allmeta
 		["get", keyidHex, mname, mpath] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			vs <- findMetaValue keyid mname mpath
 			case vs of
 				Nothing -> error "Meta not found"
 				Just a -> mapM_ (putStrLn . JSON.toString) $ a
 		["get", keyidHex, mname] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			metaM <- getMeta keyid mname
 			case metaM of
@@ -98,11 +97,11 @@ main = do
 						Nothing -> error "Meta content not found"
 						Just content -> putStr content
 		["get", keyidHex] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			vs <- getMetaNames keyid
 			mapM_ (putStrLn) vs
 		["edit", keyidHex, mname] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			v <- getMeta keyid mname
 			case v of
@@ -129,7 +128,7 @@ main = do
 												Nothing -> error "Failed to re-sign meta"
 												Just newmeta -> storeMeta newmeta
 		["replace", keyidHex, mname] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			contentV <- getContents
 			case JSON.fromString contentV of
@@ -152,7 +151,7 @@ main = do
 			keyID <- generateKeyPair
 			putStrLn $ "Your key ID is " ++ hashToHex keyID
 		["new", keyidHex, mname] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			emptyUri <- insertData theKey $ BUL.fromString "{}"
 			newMetaM <- regenMeta Meta {
 				contentURI = emptyUri,
@@ -166,7 +165,7 @@ main = do
 				Nothing -> error "Failed to sign meta"
 				Just newMeta -> storeMeta newMeta
 		["alias", "add", name, keyidHex] -> do
-			let keyid = resolveKey keyidHex
+			keyid <- resolveKeyName keyidHex
 			storeKeyAliases $ Map.insert name keyid keyAliases
 		["alias", "rm", name] -> do
 			storeKeyAliases $ Map.delete name keyAliases

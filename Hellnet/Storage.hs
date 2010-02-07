@@ -36,6 +36,7 @@ module Hellnet.Storage (
 	, isStored
 	, purgeChunk
 	, regenMeta
+	, resolveKeyName
 	, storeFile
 	, storeFile'
 	, storeKeyAliases
@@ -248,3 +249,8 @@ getKeyAliases = do
 
 storeKeyAliases :: Map.Map String KeyID -> IO ()
 storeKeyAliases m = storeFile "keyaliases" $ BUL.fromString $ JSON.toString $ toJson m
+
+resolveKeyName :: String -> IO KeyID
+resolveKeyName name = do
+	aliases <- getKeyAliases
+	return $ fromMaybe (hexToHash name) $ Map.lookup name aliases
