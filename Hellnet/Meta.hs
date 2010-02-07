@@ -1,4 +1,4 @@
-module Hellnet.Meta (Meta(..), fromByteString, toByteString) where
+module Hellnet.Meta (Meta(..), fromByteString, toByteString, emptyMeta) where
 
 import Codec.Crypto.RSA
 import qualified Data.ByteString.Lazy as BSL
