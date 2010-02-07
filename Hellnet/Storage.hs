@@ -62,7 +62,6 @@ import qualified Data.ByteString.Lazy.UTF8 as BUL
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map as Map
--- import OpenSSL.DSA
 import System.Directory
 import System.FilePath
 import System.IO
