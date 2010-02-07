@@ -57,8 +57,8 @@ fetchMetaPrintResult keyid mname = do
 	result <- fetchMeta keyid mname
 	let metaName = hashToHex (take 10 keyid) ++ ".../" ++ mname
 	putStrLn $ case result of
-				True -> "Meta "++ metaName ++" updated"
-				False -> "Meta "++ metaName ++" unchanged"
+		True -> "Meta "++ metaName ++" updated"
+		False -> "Meta "++ metaName ++" unchanged"
 
 main = do
 	argz <- getArgs
