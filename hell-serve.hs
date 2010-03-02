@@ -52,6 +52,7 @@ main = do
 	let config = defaultConfig { cnfServerPort = PortNumber port };
 	chunksPath <- toFullPath "store"
 	publicPath <- toFullPath "public.dsa"
+	nodelistPath <- toFullPath "nodelist"
 	let handShakeRes = ResourceDef {
 		resUsesNativeThread = False,
 		resIsGreedy = True,
@@ -74,6 +75,7 @@ main = do
 		(["chunks"], staticDir chunksPath)
 		,(["hello"], helloRes)
 		,(["handshake"], handShakeRes)
+		,(["nodelist"], staticFile nodelistPath)
 		]
 	storeFile "serverport" (BUL.fromString $ show port)
 	putStrLn $ "Listening on port " ++ show port
