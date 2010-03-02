@@ -284,7 +284,7 @@ fetchMetaFromNodes (n:ns) currentVersion k s = do
 	fetched <- fetchMetaFromNode n k s
 	case fetched of
 		Just a -> case currentVersion of
-			Nothing -> fetchMetaFromNodes ns Nothing k s
+			Nothing -> fetchMetaFromNodes ns fetched k s
 			Just b -> let newerVersion = if timestamp a > timestamp b then a else b
 				in fetchMetaFromNodes ns (Just newerVersion) k s
 		Nothing -> fetchMetaFromNodes ns currentVersion k s
