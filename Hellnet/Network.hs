@@ -218,12 +218,13 @@ queryNodePost s fields node = do
 	rep <- ((return . Just) =<< simpleHTTP request) `catch` const (return Nothing)
 	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
 
-handshakeWithNode :: Node -> IO Bool
+-- | Perform handshake with node. Return Left (error message) if connection failed or Right (handshake success)
+handshakeWithNode :: Node -> IO (Either String Bool)
 handshakeWithNode node = do
 	sP <- getFile "serverport"
-	result <- maybe (return False) (\serverPort -> do
+	result <- maybe (return $ Left "Server not running?") (\serverPort -> do
 		res <- queryNodePost "handshake" [("port", BSL8.unpack serverPort)] node
-		return $ maybe (False) (\r -> (BSL8.unpack r) `elem` ["OK","EXISTS"]) res
+		return $ maybe (Left "Failed to contact node") (\r -> Right $ (BSL8.unpack r) `elem` ["OK","EXISTS"]) res
 		) sP
 	return result
 
