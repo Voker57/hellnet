@@ -38,6 +38,7 @@ module Hellnet.Network (
 	, handshakeWithNode
 	, queryNodeGet
 	, updateNodeContactTime
+	, verifyMeta
 	, writeContactLog
 	, writeNodesList
 	) where
