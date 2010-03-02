@@ -26,6 +26,9 @@ Executable hell-meta
 Executable hell-nodes
  Main-is: hell-nodes.hs
  Build-Depends: base
+Executable hell-fsck
+ Main-is: hell-fsck.hs
+ Build-Depends: base
 Executable hell-serve
  Main-is: hell-serve.hs
  Build-depends: Lucu >=0.4.1, network, mtl, containers
