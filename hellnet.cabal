@@ -14,13 +14,15 @@ library
   Hellnet.Meta
   Hellnet.Network
   Hellnet.URI
- Build-Depends: base >= 4.2, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 2.0, hjson >= 1.1, safe >= 0.2, old-locale, time, unix, parsec, random, process, utf8-string, RSA, uri >= 0.1.2
+ Build-Depends: base >= 4.2, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 2.0, hjson >= 1.1, safe >= 0.2, old-locale, time, unix, parsec >= 3.0.0, random, process, utf8-string, RSA, uri >= 0.1.2
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
 Executable hell-get
  Main-is: hell-get.hs
  Build-Depends: regex-posix
+Executable hell-meta
+ Main-is: hell-meta.hs
 Executable hell-nodes
  Main-is: hell-nodes.hs
  Build-Depends: base
