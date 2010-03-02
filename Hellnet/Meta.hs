@@ -62,7 +62,8 @@ instance Jsonable Meta where
 
 fromByteString :: BSL.ByteString -> Maybe Meta
 fromByteString bs = let
-	(s, sig) = breakLazySubstring (BSL8.pack "\n\n") bs;
+	(s, sigTail) = breakLazySubstring (BSL8.pack "\n\n") bs;
+	sig = BSL.drop 2 sigTail
 	js = BUL.toString s
 	pM = either (const Nothing) (fromJson) $ Json.fromString js in
 		case pM of
