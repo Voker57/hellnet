@@ -51,6 +51,7 @@ main = do
 		fromIntegral (read (head args) :: Int) :: PortNumber
 	let config = defaultConfig { cnfServerPort = PortNumber port };
 	chunksPath <- toFullPath "store"
+	metaPath <- toFullPath "meta"
 	publicPath <- toFullPath "public.dsa"
 	nodelistPath <- toFullPath "nodelist"
 	let handShakeRes = ResourceDef {
@@ -73,6 +74,7 @@ main = do
 		}
 	let resources = mkResTree [
 		(["chunks"], staticDir chunksPath)
+		,(["meta"], staticDir metaPath)
 		,(["hello"], helloRes)
 		,(["handshake"], handShakeRes)
 		,(["nodelist"], staticFile nodelistPath)
