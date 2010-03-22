@@ -22,17 +22,21 @@ module Hellnet.Storage (
 	, getChunk
 	, getDirectory
 	, getDirectory'
+	, getExternalChunk
 	, getFile
 	, getFile'
+	, getIndex
 	, getKeyAliases
 	, getMeta
 	, getMetaNames
 	, getPrivateKey
+	, hashAndAppend
 	, hashToPath
+	, indexChunk
 	, insertChunk
 	, insertData
 	, insertFileContents
-	, insertFileContentsLazy
+	, insertIndex
 	, isStored
 	, purgeChunk
 	, regenMeta
@@ -54,6 +58,7 @@ import Data.List
 import Data.Maybe
 import Hellnet
 import Hellnet.Crypto
+import Hellnet.ExternalChunks
 import Hellnet.Meta as Meta
 import Hellnet.URI
 import Hellnet.Utils
@@ -79,19 +84,15 @@ hashAndAppend encKey a b
 		bHash <- insertChunk encKey b
 		return (BSL.append a $ BSL.pack bHash)
 
-insertFileContentsLazy :: Maybe Key -> BSL.ByteString -> IO Hash
-insertFileContentsLazy encKey bs = do
+insertFileContents :: Maybe Key -> BSL.ByteString -> IO Hash
+insertFileContents encKey bs = do
 	let chunks = splitBslFor chunkSize bs
 	chunkHashes <- mapM (insertChunk encKey) chunks
 	let fileLink = splitFor hashesPerChunk chunkHashes
-	let fileLinkChunks = Prelude.map (BSL.pack . flatten) fileLink
-		where flatten a = Prelude.foldl1 (++) a
+	let fileLinkChunks = Prelude.map (BSL.pack . concat) fileLink
 	fileLinkHead <- foldrM (hashAndAppend encKey) BSL.empty (fileLinkChunks)
 	fileLinkHash <- insertChunk encKey fileLinkHead
 	return fileLinkHash
-
-insertFileContents :: Maybe Key -> BS.ByteString -> IO Hash
-insertFileContents k b = insertFileContentsLazy k (BSL.pack $ BS.unpack b)
 
 insertChunk :: Maybe Key -> Chunk -> IO Hash
 insertChunk encKey ch = do
@@ -102,11 +103,19 @@ insertChunk encKey ch = do
 	storeFile fullPath (chunk)
 	return chunkDigestRaw
 
+-- | Fetches chunk from store or index
 getChunk :: Maybe Key -> Hash -> IO (Maybe Chunk)
 getChunk key hsh = do
 	let chunkKey = hashToHex hsh
-	fil <- getFile' ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)]
-	return $ maybe Nothing (\conts -> Just (maybe (conts) (\k -> decryptSym k conts) key)) fil
+	chunkLocal <- getFile' ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)]
+	chunk <- case chunkLocal of
+		Just fil -> return $ Just fil
+		Nothing -> do
+			locM <- getIndex hsh
+			case locM of
+				Nothing -> return Nothing
+				Just loc -> getExternalChunk loc
+	return $ fmap (\conts -> maybe (conts) (\k -> decryptSym k conts) key) chunk
 
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
@@ -151,8 +160,8 @@ hashToPath hsh = let hexHsh = hashToHex hsh in toFullPath (joinPath ["store", (P
 
 isStored :: Hash -> IO Bool
 isStored hsh = do
-	fp <- hashToPath hsh
-	return =<< (doesFileExist fp)
+	c <- getChunk Nothing hsh
+	return $ isJust c
 
 getMeta :: KeyID -> String -> IO (Maybe Meta)
 getMeta keyId mName = do
@@ -193,7 +202,7 @@ insertData encKey dat = if BSL.null $ BSL.drop (256 * 1024) dat then do
 	hsh <- insertChunk encKey dat
 	return $ ChunkURI hsh encKey Nothing
 	else do
-	hsh <- insertFileContentsLazy encKey dat
+	hsh <- insertFileContents encKey dat
 	return $ FileURI hsh encKey Nothing
 
 storePrivateKey :: KeyID -> PrivateKey -> IO ()
@@ -254,3 +263,43 @@ resolveKeyName :: String -> IO KeyID
 resolveKeyName name = do
 	aliases <- getKeyAliases
 	return $ fromMaybe (hexToHash name) $ Map.lookup name aliases
+
+-- | Return chunk hash, as it would be in database (dry run of insertChunk)
+hashChunk :: Maybe Key -> Chunk -> IO Hash
+hashChunk encKey ch = do
+	let chunk = maybe (id) (encryptSym) encKey $ ch
+	let chunkDigestRaw = Hellnet.Crypto.hash chunk
+	return chunkDigestRaw
+
+-- | Indexes chunk
+indexChunk :: Maybe Key -> Chunk -> ChunkLocation -> IO Hash
+indexChunk encKey ch cl = do
+	hsh <- hashChunk encKey ch
+	insertIndex hsh cl
+	return hsh
+
+-- | Inserts index into map
+insertIndex :: Hash -> ChunkLocation -> IO ()
+insertIndex hsh cl = do
+	storeFile' ["chunkmap", hashToHex $ take 1 hsh, hashToHex $ drop 1 hsh] $ BUL.fromString $ JSON.toString $ toJson cl
+
+-- | Looks up index in map
+getIndex :: Hash -> IO (Maybe ChunkLocation)
+getIndex hsh = do
+	contentM <- getFile' ["chunkmap", hashToHex $ take 1 hsh, hashToHex $ drop 1 hsh]
+	return $ case contentM of
+		Nothing -> Nothing
+		Just content -> case JSON.fromString $ BUL.toString content of
+			Left _ -> Nothing
+			Right js -> fromJson js
+
+getExternalChunk :: ChunkLocation -> IO (Maybe Chunk)
+getExternalChunk (FileLocation path offset encKey) = do
+	exists <- doesFileExist path
+	if exists then do
+		fH <- openFile path ReadMode
+		hSeek fH AbsoluteSeek offset
+		chunk <- BSL.hGet fH $ fromInteger chunkSize
+		return $ Just $ maybe (id) (encryptSym) encKey $ chunk
+		else
+		return Nothing

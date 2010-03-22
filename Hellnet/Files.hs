@@ -15,22 +15,47 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Files (insertFile, downloadFile) where
+module Hellnet.Files (insertFile, downloadFile, indexFile) where
 
 import Codec.Utils
+import Data.Foldable (foldrM)
 import Data.Maybe
 import Hellnet
+import Hellnet.ExternalChunks
 import Hellnet.Storage
 import Hellnet.URI
 import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import System.Directory
+import System.IO
 
-insertFile :: Maybe Key -> FilePath -> IO [Octet]
-insertFile encKey fname  = do
+insertFile :: Maybe Key -> FilePath -> IO Hash
+insertFile encKey fname = do
 	conts <- BSL.readFile fname
-	hsh <- insertFileContentsLazy encKey conts
+	hsh <- insertFileContents encKey conts
 	return hsh
+
+indexFile :: Maybe Key -> FilePath -> IO Hash
+indexFile encKey fname = do
+	fullPath <- canonicalizePath fname
+	fH <- openFile fname ReadMode
+	hSetBinaryMode fH True
+	let indexFileLoop hs offset = do
+		chunk <- BSL.hGet fH (fromIntegral chunkSize)
+		hsh <- indexChunk encKey chunk (FileLocation fullPath offset encKey)
+		eof <- hIsEOF fH
+		if eof then
+			return $ hs ++ [hsh]
+			else
+			indexFileLoop (hs ++ [hsh]) (offset + chunkSize)
+	chunkHashes <- indexFileLoop [] 0
+	let fileLink = splitFor hashesPerChunk chunkHashes
+	let fileLinkChunks = Prelude.map (BSL.pack . concat) fileLink
+	fileLinkHead <- foldrM (hashAndAppend encKey) BSL.empty (fileLinkChunks)
+	fileLinkHash <- insertChunk encKey fileLinkHead
+	return fileLinkHash
+
 
 getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()
 getChunkAppendToFile encKey fname hsh = do

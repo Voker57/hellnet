@@ -13,6 +13,7 @@ Category: Network
 library
  Exposed-Modules: Hellnet
   Hellnet.Crypto
+  Hellnet.ExternalChunks
   Hellnet.Files
   Hellnet.Utils
   Hellnet.Storage

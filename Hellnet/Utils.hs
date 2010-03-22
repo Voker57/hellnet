@@ -73,17 +73,17 @@ hashToHex x = render (hexdumpBy "" 666 x)
 hexToHash :: String -> [Octet]
 hexToHash s = map (fst . head . readHex) (splitFor 2 s)
 
-splitFor :: Int -> [a] -> [[a]]
+splitFor :: Integer -> [a] -> [[a]]
 splitFor _ [] = []
-splitFor n xs = (take n xs) : (splitFor n (drop n xs))
+splitFor n xs = (genericTake n xs) : (splitFor n (genericDrop n xs))
 
 -- splitBsFor :: Int -> BS -> [BS]
 splitBsFor n xs = if BS.null xs then
 	[]
 	else
-	(BS.take n xs) : (splitBsFor n (BS.drop n xs))
+	(BS.take (fromIntegral n) xs) : (splitBsFor n (BS.drop (fromIntegral n) xs))
 
-splitBslFor :: Int -> BSL.ByteString -> [BSL.ByteString]
+splitBslFor :: Integer -> BSL.ByteString -> [BSL.ByteString]
 splitBslFor n xs = if BSL.null xs then
 	[]
 	else
@@ -108,7 +108,7 @@ shuffle xs = do
 genHash :: IO Hash
 genHash = do
 	gen <- newStdGen
-	return (map (fromIntegral) (take hashSize (randomRs (0,255) gen) :: [Int]))
+	return (map (fromIntegral) (genericTake hashSize (randomRs (0,255) gen) :: [Int]))
 
 -- | discards return value and to make matters worse, taint the result
 discard :: a -> IO ()
@@ -118,7 +118,7 @@ discard _ = return ()
 genKey :: IO Key
 genKey = do
 	gen <- newStdGen
-	return (map (fromIntegral) (take encKeySize (randomRs (0,255) gen) :: [Int]))
+	return (map (fromIntegral) (genericTake encKeySize (randomRs (0,255) gen) :: [Int]))
 
 -- | parses command line options, splits flags and args
 simpleOpts :: [String] -> ([String], [String])

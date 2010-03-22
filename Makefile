@@ -6,3 +6,8 @@ $(execs): %: %.hs $(lib)
 clean:
 	find -name "*.hi" -exec rm {} \;
 	find -name "*.o" -exec rm {} \;
+jumpstart:
+	cd ../hellage &&	ghc --make hellage && ghc --make hellage-genmeta && cp hellage{-genmeta,} ../hellnet
+	tar c hell-{fsck,get,insert,meta,nodes,serve} hellage hellage-genmeta | bzip2 > hellnet-bin.tar.bz2
+	scp hellnet-bin.tar.bz2 bitcheese.net:/var/www/dump.nblast.org/files/
+	git describe

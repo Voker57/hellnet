@@ -151,7 +151,7 @@ findFile' key cs = do
 	let chs = splitBslFor hashSize cs
 	chs' <- findChunks key $ map (BSL.unpack) chs
 	either (return . Left)
-		(\c -> if (length chs) == (hashesPerChunk + 1) then do
+		(\c -> if (length chs) == (fromInteger hashesPerChunk + 1) then do
 			f <- findFile' key (last c)
 			either (return . Left) (\ff -> return $ Right $ BSL.concat [BSL.concat $ init c, ff]) f
 			else
@@ -198,7 +198,7 @@ fetchFile' encKey cs = do
 	if	not (null chs') then do
 		return (Left chs')
 		else
-		if (length chs) == (hashesPerChunk + 1) then do
+		if (length chs) == (fromInteger hashesPerChunk + 1) then do
 			c <- getChunk encKey $ last chs
 			f <- fetchFile' encKey $ unjust c
 			return (either (Left) (Right . ((++) (init chs))) f)

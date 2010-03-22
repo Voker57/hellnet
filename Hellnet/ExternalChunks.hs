@@ -15,31 +15,26 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet where
+module Hellnet.ExternalChunks (ChunkLocation(..)) where
 
-import Codec.Utils
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Map as Map
+import Data.Maybe
+import Hellnet
+import Hellnet.Crypto
+import Hellnet.Utils
+import System.Directory
+import System.IO
+import Text.HJson
 
-type Hash = [Octet]
-type Chunk = BSL.ByteString
-type Key = [Octet]
-type Node = (String, Int)
-type NodeID = Hash
-type KeyID = Hash
-type Signature = BSL.ByteString
+data ChunkLocation = FileLocation FilePath Integer (Maybe Key) deriving (Ord, Eq, Show)
 
-hashSize :: Integer
-hashSize = 64
-
-chunkSize :: Integer
-chunkSize = 256 * 1024
-
-hashesPerChunk :: Integer
-hashesPerChunk = (chunkSize `div` hashSize) - 1
-
-encKeySize :: Integer
-encKeySize = 32
-
-numThreads :: Integer
-numThreads = 4
+instance Jsonable ChunkLocation where
+	toJson (FileLocation path offset encKey) = JObject $ Map.fromList $ [
+		("type", toJson "file"),
+		("path", toJson path),
+		("offset", toJson offset)] ++ (maybeToList $ fmap ((\a -> ("key", a)) . toJson . hashToHex) encKey)
+	fromJson (JObject m) = case map (flip Map.lookup $ m) ["type", "path", "offset", "key"] of
+		[Just (JString "file"), Just (JString path), Just (JNumber offset), keyM] -> Just $ FileLocation path (round offset) (fmap (\(JString s) -> hexToHash s) keyM)
+		otherwise -> Nothing
+	fromJson _ = Nothing

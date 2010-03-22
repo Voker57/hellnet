@@ -22,8 +22,10 @@ import Data.Maybe
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.UTF8 as BUL
+import Hellnet.ExternalChunks
 import Hellnet.Storage
 import Hellnet.Network
+import Hellnet.Utils
 import Network.HTTP.Lucu as Lucu
 import Network
 import System.Environment
@@ -42,6 +44,27 @@ handShakeOut = do
 			else output "FAIL"
 		else
 		setStatus NotAcceptable
+
+mappedChunksResponse hsh = do
+	chunkIndex <- liftIO $ getIndex hsh
+	case chunkIndex of
+		Nothing -> setStatus NotFound
+		Just loc -> do
+			chunkM <- liftIO $ getExternalChunk loc
+			case chunkM of
+				Nothing -> setStatus NotFound
+				Just chunk -> outputLBS chunk
+
+mappedChunksFallback ["chunks", fp, sp] = return $ Just $ ResourceDef {
+		resUsesNativeThread = False,
+		resIsGreedy = False,
+		resGet = Just $ mappedChunksResponse $ hexToHash (fp ++ sp),
+		resHead = Nothing,
+		resPost = Nothing,
+		resPut = Nothing,
+		resDelete = Nothing
+		}
+mappedChunksFallback _ = return Nothing
 
 main = do
 	args <- getArgs
@@ -81,4 +104,4 @@ main = do
 		]
 	storeFile "serverport" (BUL.fromString $ show port)
 	putStrLn $ "Listening on port " ++ show port
-	runHttpd config resources []
+	runHttpd config resources [mappedChunksFallback]

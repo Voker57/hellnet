@@ -18,6 +18,7 @@
 import Codec.Utils
 import Control.Monad
 import Hellnet
+import Hellnet.ExternalChunks
 import Hellnet.Files
 import Hellnet.Storage
 import Hellnet.URI
@@ -26,21 +27,24 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Char8 as BS8 (unpack,pack)
 import System.Console.GetOpt
+import System.Directory
 import System.Environment (getArgs)
 import System.FilePath
 import System.IO
 
-data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool}
+data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool, outOfStore :: Bool}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['e'] ["encrypt"]
 		(OptArg (\s o -> o {encKey = maybe (Nothing) (Just . hexToHash) s, encrypt = True}) "key") "Encrypt (optionally with specified key)",
 	Option ['c'] ["chunk"]
-		(NoArg (\o -> o {chunk = True})) "Add file as single chunk (Only for files < 256 kB)"
+		(NoArg (\o -> o {chunk = True})) "Add file as single chunk (Only for files < 256 kB)",
+	Option ['o'] ["out-of-store"]
+		(NoArg (\o -> o {outOfStore = True})) "Do not insert chunks into store, but add them into chunks' map instead, so hell-serve would get them out of file directly. Much slower. Probably."
 	]
 
-defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False}
+defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, outOfStore = False}
 
 
 insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
@@ -60,6 +64,23 @@ insertChunkPrintHash encKey fname = do
 	let url = ChunkURI hsh encKey (Just filename)
 	putStrLn $ show url
 
+indexFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
+indexFilePrintHash encKey fname = do
+	let filename = last (splitPath fname)
+	hsh <- indexFile encKey fname
+	let url = FileURI hsh encKey (Just filename)
+	putStrLn $ show url
+
+indexChunkPrintHash :: Maybe [Octet] -> FilePath -> IO ()
+indexChunkPrintHash encKey fname = do
+	let filename = last (splitPath fname)
+	fullPath <- canonicalizePath fname
+	dat <- BSL.readFile fname
+	when (not $ BSL.null $ BSL.drop (fromIntegral chunkSize) dat) (fail $ "Too large to insert as chunk: " ++ fname)
+	hsh <- indexChunk encKey dat (FileLocation fullPath 0 encKey)
+	let url = ChunkURI hsh encKey (Just filename)
+	putStrLn $ show url
+
 main = do
 	args <- getArgs
  	let (opts, argz, errs) = getOpt Permute options args
@@ -70,6 +91,12 @@ main = do
 		else
 		return Nothing
 	if chunk optz then
-		mapM (insertChunkPrintHash theKey) argz
+		if outOfStore optz then
+			mapM (indexChunkPrintHash theKey) argz
+			else
+			mapM (insertChunkPrintHash theKey) argz
 		else
-		mapM (insertFilePrintHash theKey) argz
+		if outOfStore optz then
+			mapM (indexFilePrintHash theKey) argz
+			else
+			mapM (insertFilePrintHash theKey) argz
