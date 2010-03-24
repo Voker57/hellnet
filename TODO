@@ -9,7 +9,6 @@ Easy & fun (but i'm probably doing it right now)
 Boring
 
  * Move everyting to Error data type
- * Directory locking
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
  * Sizes!
 
@@ -33,4 +32,3 @@ Not sure if it's worth it
 
  * Cryptographic mechanism of identifying node
  * Active Meta-updating (Metamail)
- * Out-of-store file insertion
