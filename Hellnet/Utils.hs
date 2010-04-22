@@ -48,7 +48,7 @@ import qualified Control.Exception as Ex
 import Data.Foldable (foldlM)
 import Data.LargeWord
 import Data.List
-import Data.Time
+import Data.Time.Clock.POSIX
 import Data.Word
 import Hellnet
 import Network.URI
@@ -61,7 +61,6 @@ import Random
 import Safe
 import System.Environment
 import System.IO.Error
-import System.Locale
 import Text.PrettyPrint.HughesPJ (render)
 
 unjust :: (Maybe a) -> a
@@ -158,8 +157,8 @@ explode c = unfoldr (\s -> if null s then Nothing else Just (takeWhile (/=c) s, 
 -- | Get current UNIX time
 getUnixTime :: IO Integer
 getUnixTime = do
-	tim <- getCurrentTime
-	return $ read $ formatTime defaultTimeLocale "%s" tim
+	tim <- getPOSIXTime
+	return $ round tim
 
 relaxByteString :: BS.ByteString -> BSL.ByteString
 relaxByteString = BSL.pack . BS.unpack
