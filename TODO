@@ -10,6 +10,7 @@ Boring
 
  * Move everyting to Error data type
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
+ * "Hashed" schema
  * Sizes!
 
 Non-trivial
