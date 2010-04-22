@@ -69,10 +69,10 @@ mappedChunksFallback _ = return Nothing
 main = do
 	args <- getArgs
 	let port = if length args == 0 then
-		6666
+		"6666"
 		else
-		fromIntegral (read (head args) :: Int) :: PortNumber
-	let config = defaultConfig { cnfServerPort = PortNumber port };
+		head args
+	let config = defaultConfig { cnfServerPort = port };
 	chunksPath <- toFullPath "store"
 	metaPath <- toFullPath "meta"
 	publicPath <- toFullPath "public.dsa"
