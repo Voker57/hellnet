@@ -4,7 +4,6 @@ Easy & fun (but i'm probably doing it right now)
 
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Replace maybe's w/cases
- * Make aliases for keys
 
 Boring
 
