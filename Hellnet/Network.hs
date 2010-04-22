@@ -348,7 +348,7 @@ findMetaValue keyId mName mPath = do
 fetchNodeListFromNode :: Node -> IO [Node]
 fetchNodeListFromNode node = do
 	results <- queryNodeGet "/nodelist" node
-	return (fromMaybe [] (maybe Nothing (readMay . BSL8.unpack) results))
+	return (fromMaybe [] (maybe Nothing (readMay . BUL.toString) results))
 
 findURI :: HellnetURI -> IO (Maybe BSL.ByteString)
 findURI uri = case uri of
