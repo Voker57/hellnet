@@ -1,5 +1,5 @@
 Name: hellnet
-Version: 0.1.1
+Version: 0.1.2
 Synopsis: Simple, distributed, anonymous data sharing network.
 Author: Voker57
 Maintainer: voker57@gmail.com
@@ -20,7 +20,7 @@ library
   Hellnet.Meta
   Hellnet.Network
   Hellnet.URI
- Build-Depends: base >= 4.2 && < 5, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 2.0, hjson >= 1.1, safe >= 0.2, time, unix, parsec >= 3.0.0, random, process, utf8-string, RSA, uri >= 0.1.2
+ Build-Depends: base >= 4.2 && < 5, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 3.0 && < 4.0, hjson >= 1.1, safe >= 0.2, time, unix, parsec >= 3.0.0, random, process, utf8-string, RSA, uri >= 0.1.2
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
@@ -37,4 +37,4 @@ Executable hell-fsck
  Build-Depends: base
 Executable hell-serve
  Main-is: hell-serve.hs
- Build-depends: Lucu >=0.6, network, mtl, containers
+ Build-depends: Lucu >=0.7 && < 0.8, network, mtl, containers

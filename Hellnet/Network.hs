@@ -343,7 +343,7 @@ findMetaValue keyId mName mPath = do
 			cont <- findMetaContent m
 			case cont of
 				Nothing -> return Nothing
-				Just j -> return $ Just $ jPath' mPath j
+				Just j -> return $ Just $ jPath mPath j
 
 fetchNodeListFromNode :: Node -> IO [Node]
 fetchNodeListFromNode node = do

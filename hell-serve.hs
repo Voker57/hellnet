@@ -33,9 +33,9 @@ import System.Environment
 handShakeOut = do
 	fD <- inputForm(1000)
 	host <- getRemoteAddr'
-	let fMap = Map.fromList $ map (\fd -> (fdName fd, fdContent fd)) fD
+	let fMap = Map.fromList fD
 	if "port" `Map.member` fMap && (not $ host `elem` ["localhost","127.0.0.1"]) then do
-		let node = (host, read $ BUL.toString $ Map.findWithDefault (BUL.fromString "0") "port" fMap)
+		let node = (host, read $ BUL.toString $ fromMaybe (BUL.fromString "0") $ fmap (fdContent) $ Map.lookup "port" fMap)
 		res <- liftIO $ queryNodeGet "hello" node
 		if res /= Nothing then do
 			r <- liftIO $ addNode node

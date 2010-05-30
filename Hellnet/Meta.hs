@@ -36,10 +36,10 @@ emptyMeta = Meta {
 
 instance Jsonable Meta where
 	fromJson v = let
-		keyIDV = jPath' "key" v;
-		timestampV = jPath' "updated" v;
-		nameV = jPath' "name" v;
-		contentV = jPath' "content" v in
+		keyIDV = jPath "key" v;
+		timestampV = jPath "updated" v;
+		nameV = jPath "name" v;
+		contentV = jPath "content" v in
 			case [keyIDV, timestampV, nameV, contentV] of
 				[	[JString keyHash]
 					, [JNumber timestampF]
