@@ -1,6 +1,6 @@
-all: hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-talk
+all: hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-talk hell-dir
 lib = Hellnet.hs Hellnet/*.hs
-execs = hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta
+execs = hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-dir
 $(execs): %: %.hs $(lib)
 	ghc --make -hide-package transformers $@
 clean:
@@ -8,6 +8,6 @@ clean:
 	find -name "*.o" -exec rm {} \;
 jumpstart:
 	cd ../hellage &&	ghc --make hellage && ghc --make hellage-genmeta && cp hellage{-genmeta,} ../hellnet
-	tar c hell-{fsck,get,insert,meta,nodes,serve} hellage hellage-genmeta | bzip2 > hellnet-bin.tar.bz2
+	tar c hell-{fsck,get,insert,meta,nodes,serve,dir} hellage hellage-genmeta | bzip2 > hellnet-bin.tar.bz2
 	scp hellnet-bin.tar.bz2 bitcheese.net:/var/www/dump.nblast.org/files/
 	git describe
