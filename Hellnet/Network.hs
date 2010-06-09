@@ -27,6 +27,7 @@ module Hellnet.Network (
 	, findChunks
 	, findFile
 	, findKey
+	, findMeta
 	, findMetaContent
 	, findMetaContent'
 	, findMetaContentByName
@@ -365,3 +366,8 @@ findKey kid = do
 	return $ case ch of
 		Nothing -> Nothing
 		Just chunk -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString $ chunk
+
+findMeta :: KeyID -> String -> IO (Maybe Meta)
+findMeta kid name = do
+	fetchMeta kid name
+	getMeta kid name
