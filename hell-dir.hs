@@ -3,6 +3,7 @@ import qualified Data.Map                  as Map
 import qualified Data.ByteString.Lazy      as BSL
 import qualified Data.ByteString.Lazy.UTF8 as BUL
 import           Data.Maybe
+import           Hellnet
 import           Hellnet.Files
 import           Hellnet.Meta
 import           Hellnet.Network
@@ -42,15 +43,17 @@ instance Jsonable FileTree where
 		("contents", toJson conts)
 		]
 		
-data Opts = Opts { recursive :: Bool }
+data Opts = Opts { recursive :: Bool, encrypt :: Bool, encKey :: Maybe Key}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['r'] ["recursive"]
-		(NoArg (\o -> o {recursive = True}) ) "Recurse into subdirectories"
+		(NoArg (\o -> o {recursive = True}) ) "Recurse into subdirectories",
+	Option ['e'] ["encrypt"]
+		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)"
 	]
 
-defaultOptions = Opts { recursive = False }
+defaultOptions = Opts { recursive = False, encrypt = False, encKey = Nothing }
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
 convertTree fs d@(Tree.Dir{}) = do
@@ -140,6 +143,10 @@ main = do
 	argz <- getArgs
 	let (optz, args, errs) = getOpt Permute options argz
 	let opts = processOptions defaultOptions optz
+	theKey <- if encrypt opts then
+		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
+		else
+		return Nothing
 	let [action, dirName, metaKey, mName] = args
 	keyid <- resolveKeyName metaKey
 	case action of
@@ -154,7 +161,8 @@ main = do
 			currentTreeM <- convertTree [dirName] $ Tree.free dirTree
 			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
-			print =<< (pullTreeWalker dirName remoteTree $ Just currentTree)
+			currentTree' <- (pullTreeWalker dirName remoteTree $ Just currentTree)
+			putStrLn "All done"
 		"push" -> do
 			putStrLn "Synchronizing remote tree with local"
 			metaM <- findMeta keyid mName
@@ -168,4 +176,13 @@ main = do
 			currentTreeM <- convertTree [] $ Tree.free dirTree
 			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
-			print =<< pushTreeWalker dirName currentTree remoteTree
+			putStrLn "Updating index..."
+			remoteTree' <- pushTreeWalker dirName currentTree remoteTree
+			putStrLn "Updating meta..."
+			link' <- insertData theKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
+			newMetaM <- regenMeta $ meta {contentURI = link'}
+			case newMetaM of
+				Nothing -> error "Failed to sign meta"
+				Just newMeta -> do
+					storeMeta newMeta
+					putStrLn "Success"

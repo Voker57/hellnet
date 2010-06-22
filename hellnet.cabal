@@ -38,3 +38,6 @@ Executable hell-fsck
 Executable hell-serve
  Main-is: hell-serve.hs
  Build-depends: Lucu >=0.7 && < 0.8, network, mtl, containers
+Executable hell-dir
+ Main-is: hell-dir.hs
+ Build-depends: directory-tree >= 0.1 && < 0.2, old-time
