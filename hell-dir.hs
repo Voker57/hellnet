@@ -76,12 +76,8 @@ pullTreeWalker cpath (Dir rmtime rfiles) (Just (File _ _)) = do
 	removeFile cpath
 	pullTreeWalker cpath (Dir rmtime rfiles) Nothing
 pullTreeWalker cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
-	if rmtime <= lmtime then do
-		printf "Directory %s is newer then remote one; skipping\n" cpath
-		return ()
-		else do
-		printf "Directory %s needs updating\n" cpath
-		mapM_ (\(name, tree) -> pullTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
+	printf "Traversing directory %s\n" cpath
+	mapM_ (\(name, tree) -> pullTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
 pullTreeWalker cpath (Dir rmtime rfiles) Nothing = do
 	printf "Creating directory %s\n" cpath
 	createDirectoryIfMissing True cpath
@@ -92,8 +88,8 @@ pullTreeWalker cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
 	removeDirectoryRecursive cpath
 	pullTreeWalker cpath (File rmtime link) Nothing
 pullTreeWalker cpath (File rmtime link) (Just (File lmtime llink)) = do
-	if rmtime <= lmtime then do
-		printf "File %s is newer then remote one; skipping\n" cpath
+	if rmtime == lmtime then do
+		printf "File %s is no older then remote one; skipping\n" cpath
 		return ()
 		else do
 		printf "File %s needs updating\n" cpath
@@ -111,15 +107,11 @@ pushTreeWalker cpath (Dir lmtime lfiles) (Just (File _ _)) = do
 	removeFile cpath
 	pushTreeWalker cpath (Dir lmtime lfiles) Nothing
 pushTreeWalker cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
-	if rmtime >= lmtime then do
-		printf "Directory %s is newer then remote one; skipping\n" cpath
-		return $ Dir rmtime rfiles
-		else do
-		printf "Directory %s needs updating\n" cpath
-		lfiles' <- mapM (\(name, tree) -> do
-			tree' <- pushTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name rfiles
-			return (name, tree')) $ Map.toList lfiles
-		return $ Dir lmtime $ Map.fromList lfiles'
+	printf "Traversing directory %s\n" cpath
+	lfiles' <- mapM (\(name, tree) -> do
+		tree' <- pushTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name rfiles
+		return (name, tree')) $ Map.toList lfiles
+	return $ Dir lmtime $ Map.fromList lfiles'
 pushTreeWalker cpath (Dir lmtime lfiles) Nothing = do
 	printf "Creating directory %s\n" cpath
 	lfiles' <- mapM (\(key, value) -> do
@@ -128,8 +120,8 @@ pushTreeWalker cpath (Dir lmtime lfiles) Nothing = do
 	return $ Dir lmtime $ Map.fromList lfiles'
 -- File cases
 pushTreeWalker cpath (File lmtime link) (Just (File rmtime rlink)) = do
-	if rmtime >= lmtime then do
-		printf "File %s is newer then remote one; skipping\n" cpath
+	if rmtime == lmtime then do
+		printf "File %s is no older then remote one; skipping\n" cpath
 		return $ File rmtime rlink
 		else do
 		printf "File %s needs updating\n" cpath
