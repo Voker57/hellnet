@@ -1,3 +1,4 @@
+import           Control.Monad
 import qualified Data.Map                  as Map
 import qualified Data.ByteString.Lazy      as BSL
 import qualified Data.ByteString.Lazy.UTF8 as BUL
@@ -16,6 +17,7 @@ import           System.Time
 import qualified System.Directory.Tree     as Tree
 import           Text.HJson                as JSON
 import           Text.JSON.JPath
+import           Text.Printf
 
 data FileTree = Dir Integer (Map.Map FilePath FileTree) | File Integer String deriving (Eq, Show)
 
@@ -66,6 +68,74 @@ convertTree fs d@(Tree.File{}) = do
 	return $ Just $ File i ""
 convertTree _ _ = return Nothing
 
+pullTreeWalker cpath (Dir rmtime rfiles) (Just (File _ _)) = do
+	printf "File %s exists, but it should be a directory; deleting\n" cpath
+	removeFile cpath
+	pullTreeWalker cpath (Dir rmtime rfiles) Nothing
+pullTreeWalker cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
+	if rmtime <= lmtime then do
+		printf "Directory %s is newer then remote one; skipping\n" cpath
+		return ()
+		else do
+		printf "Directory %s needs updating\n" cpath
+		mapM_ (\(name, tree) -> pullTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
+pullTreeWalker cpath (Dir rmtime rfiles) Nothing = do
+	printf "Creating directory %s\n" cpath
+	createDirectoryIfMissing True cpath
+	mapM_ (\(name, tree) -> pullTreeWalker (joinPath [cpath, name]) tree Nothing) $ Map.toList rfiles
+-- File cases
+pullTreeWalker cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
+	printf "Directory %s exists, but it should be a file instead;  rm-r'ing" cpath
+	removeDirectoryRecursive cpath
+	pullTreeWalker cpath (File rmtime link) Nothing
+pullTreeWalker cpath (File rmtime link) (Just (File lmtime llink)) = do
+	if rmtime <= lmtime then do
+		printf "File %s is newer then remote one; skipping\n" cpath
+		return ()
+		else do
+		printf "File %s needs updating\n" cpath
+		removeFile cpath
+		pullTreeWalker cpath (File rmtime link) Nothing
+pullTreeWalker cpath (File rmtime link) Nothing = do
+	printf "Updating file %s\n" cpath
+	mBsl <- findURI $ fromMaybe (error "bad link") $ parseHellnetURI link
+	case mBsl of
+		Nothing -> error ("URI " ++ link ++ " not found!")
+		Just conts -> BSL.writeFile cpath conts
+
+pushTreeWalker cpath (Dir lmtime lfiles) (Just (File _ _)) = do
+	printf "File %s exists, but it should be a directory; deleting\n" cpath
+	removeFile cpath
+	pushTreeWalker cpath (Dir lmtime lfiles) Nothing
+pushTreeWalker cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
+	if rmtime >= lmtime then do
+		printf "Directory %s is newer then remote one; skipping\n" cpath
+		return $ Dir rmtime rfiles
+		else do
+		printf "Directory %s needs updating\n" cpath
+		lfiles' <- mapM (\(name, tree) -> do
+			tree' <- pushTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name rfiles
+			return (name, tree')) $ Map.toList lfiles
+		return $ Dir lmtime $ Map.fromList lfiles'
+pushTreeWalker cpath (Dir lmtime lfiles) Nothing = do
+	printf "Creating directory %s\n" cpath
+	lfiles' <- mapM (\(key, value) -> do
+		tree' <- pushTreeWalker (joinPath [cpath, key]) value Nothing
+		return (key, tree')) $ Map.toList $ lfiles
+	return $ Dir lmtime $ Map.fromList lfiles'
+-- File cases
+pushTreeWalker cpath (File lmtime link) (Just (File rmtime rlink)) = do
+	if rmtime >= lmtime then do
+		printf "File %s is newer then remote one; skipping\n" cpath
+		return $ File rmtime rlink
+		else do
+		printf "File %s needs updating\n" cpath
+		pushTreeWalker cpath (File lmtime link) Nothing
+pushTreeWalker cpath (File lmtime _) _ = do
+	printf "Updating file %s\n" cpath
+	url <- insertData Nothing =<< BSL.readFile cpath
+	return (File lmtime $ show url)
+
 main = do
 	argz <- getArgs
 	let (optz, args, errs) = getOpt Permute options argz
@@ -74,73 +144,28 @@ main = do
 	keyid <- resolveKeyName metaKey
 	case action of
 		"pull" -> do
-			cont <- findMetaContentByName keyid mName
-			let remoteTree = fromMaybe (error "Could not read file tree from JSON") $ fromJson $ fromMaybe (error "JSON parsing failed") cont
-			
+			putStrLn "Synchronizing local tree with remote"
+			contM <- findMetaContentByName keyid mName
+			let remoteTree = case contM of
+				Just cont -> fromMaybe (error "Couldn't load file tree") $ fromJson cont
+				Nothing -> error "Couldn't parse JSON"
+			putStrLn "Reading directory tree..."
 			dirTree <- Tree.readDirectoryWith (const $ return ()) dirName
-			currentTree <- convertTree [dirName] $ Tree.free dirTree
+			currentTreeM <- convertTree [dirName] $ Tree.free dirTree
+			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
-			let treeWalker cpath (Dir rmtime rfiles) (Just (File _ _)) = do
-				removeFile cpath
-				treeWalker cpath (Dir rmtime rfiles) Nothing
-			let treeWalker cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
-				if rmtime <= lmtime then
-					return ()
-					else
-					mapM_ (\(name, tree) -> treeWalker (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
-			let treeWalker cpath (Dir rmtime rfiles) Nothing = do
-				createDirectoryIfMissing True cpath
-				mapM_ (\(name, tree) -> treeWalker (joinPath [cpath, name]) tree Nothing) $ Map.toList rfiles
-			-- File cases
-			let treeWalker cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
-				removeDirectoryRecursive cpath
-				treeWalker cpath (File rmtime link) Nothing
-			let treeWalker cpath (File rmtime link) (Just (File lmtime llink)) = do
-				if rmtime <= lmtime then
-					return ()
-					else do
-					removeFile cpath
-					treeWalker cpath (File rmtime link) Nothing
-			let treeWalker cpath (File rmtime link) Nothing = do
-				mBsl <- findURI $ fromMaybe (error "bad link") $ parseHellnetURI link
-				case mBsl of
-					Nothing -> error ("URI " ++ link ++ " not found!")
-					Just conts -> BSL.writeFile cpath conts
-			
-			treeWalker dirName remoteTree $ Just currentTree
+			print =<< (pullTreeWalker dirName remoteTree $ Just currentTree)
 		"push" -> do
+			putStrLn "Synchronizing remote tree with local"
 			metaM <- findMeta keyid mName
+			when (isNothing metaM) $ putStrLn "Warning: Meta not found. Creating new one."
 			let meta = fromMaybe (emptyMeta {keyID = keyid, metaName = mName}) metaM
 			contM <- findMetaContent meta
 			let remoteTree = (fromMaybe (Nothing) $ fmap (fromJson) contM) :: Maybe FileTree
 			
+			putStrLn "Reading directory tree..."
 			dirTree <- Tree.readDirectoryWith (const $ return ()) dirName
-			currentTree <- convertTree [dirName] $ Tree.free dirTree
+			currentTreeM <- convertTree [] $ Tree.free dirTree
+			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
-			let treeWalker cpath (Dir lmtime lfiles) (Just (File _ _)) = do
-				removeFile cpath
-				treeWalker cpath (Dir lmtime lfiles) Nothing
-			let treeWalker cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
-				if rmtime >= lmtime then
-					return $ Dir rmtime rfiles
-					else do
-					lfiles' <- mapM (\(name, tree) -> do
-						tree' <- treeWalker (joinPath [cpath, name]) tree $ Map.lookup name rfiles
-						return (name, tree')) $ Map.toList lfiles
-					return $ Dir lmtime $ Map.fromList lfiles'
-			let treeWalker cpath (Dir lmtime lfiles) Nothing = do
-				lfiles' <- mapM (\(key, value) -> do
-					tree' <- treeWalker (joinPath [cpath, key]) value Nothing
-					return (key, tree')) $ Map.toList $ lfiles
-				return $ Dir lmtime $ Map.fromList lfiles'
-			-- File cases
-			let treeWalker cpath (File lmtime link) (Just (File rmtime rlink)) = do
-				if rmtime >= lmtime then
-					return $ File rmtime rlink
-					else
-					treeWalker cpath (File lmtime link) Nothing
-			let treeWalker cpath (File lmtime _) _ = do
-				url <- insertData Nothing =<< BSL.readFile cpath
-				return (File lmtime $ show url)
-			
-			print =<< treeWalker dirName (fromMaybe (error "Couldn't traverse local tree") currentTree) remoteTree
+			print =<< pushTreeWalker dirName currentTree remoteTree
