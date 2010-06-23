@@ -43,17 +43,19 @@ instance Jsonable FileTree where
 		("contents", toJson conts)
 		]
 		
-data Opts = Opts { recursive :: Bool, encrypt :: Bool, encKey :: Maybe Key}
+data Opts = Opts { recursive :: Bool, encrypt :: Bool, encKey :: Maybe Key, updateMeta :: Bool}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['r'] ["recursive"]
 		(NoArg (\o -> o {recursive = True}) ) "Recurse into subdirectories",
 	Option ['e'] ["encrypt"]
-		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)"
+		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
+	Option ['u'] ["update-meta"]
+		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval"
 	]
 
-defaultOptions = Opts { recursive = False, encrypt = False, encKey = Nothing }
+defaultOptions = Opts { recursive = False, encrypt = False, encKey = Nothing, updateMeta = False }
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
 convertTree fs d@(Tree.Dir{}) = do
@@ -141,6 +143,7 @@ main = do
 		return Nothing
 	let [action, dirName, metaKey, mName] = args
 	keyid <- resolveKeyName metaKey
+	when (updateMeta opts) (fetchMeta keyid mName >> return ())
 	case action of
 		"pull" -> do
 			putStrLn "Synchronizing local tree with remote"
