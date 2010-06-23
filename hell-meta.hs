@@ -22,6 +22,7 @@ import qualified Data.Map as Map
 import Data.List
 import Data.Maybe
 import Hellnet
+import Hellnet.Crypto
 import Hellnet.Meta as Meta
 import Hellnet.Network
 import Hellnet.Storage
@@ -32,15 +33,20 @@ import System.Exit
 import System.IO
 import System.Cmd
 import Text.HJson as JSON
+import Text.Printf
 
 data Opts = Opts {
 	encrypt :: Bool,
 	encKey :: Maybe Key,
-	updateMeta :: Bool
+	updateMeta :: Bool,
+	encryptMeta :: Bool,
+	metaEncKey :: Maybe Key
 	}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
+	Option ['m'] ["meta-encryption"]
+		(OptArg (\s o ->  o {encryptMeta = True, metaEncKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Use encryption on meta (optionally (if encrypting) with specified key)",
 	Option ['e'] ["encrypt"]
 		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
 	Option ['u'] ["update-meta"]
@@ -50,7 +56,9 @@ options = [
 defaultOptions = Opts {
 	encrypt = False,
 	encKey = Nothing,
-	updateMeta = False
+	updateMeta = False,
+	encryptMeta = False,
+	metaEncKey = Nothing
 	}
 
 fetchMetaPrintResult :: KeyID -> String -> IO ()
@@ -70,6 +78,12 @@ main = do
 		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
 		else
 		return Nothing
+	theMetaKey <- if encryptMeta opts then
+		(return . Just) =<< (maybe (genKey) (return) $ metaEncKey opts)
+		else
+		return Nothing
+	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
+	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
 	case args of
 		["update", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
@@ -79,20 +93,22 @@ main = do
 			allmeta <- getMetaNames keyid
 			mapM_ (fetchMetaPrintResult keyid) allmeta
 		["get", keyidHex, mname, mpath] -> do
+			ensureSuppliedMetaKey
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
-			vs <- findMetaValue keyid mname mpath
+			vs <- findMetaValue theMetaKey keyid mname mpath
 			case vs of
 				Nothing -> error "Meta not found"
 				Just a -> mapM_ (putStrLn . JSON.toString) $ a
 		["get", keyidHex, mname] -> do
+			ensureSuppliedMetaKey
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			metaM <- getMeta keyid mname
 			case metaM of
 				Nothing -> error "Meta not found"
 				Just meta -> do
-					contentM <- findMetaContent' meta
+					contentM <- findMetaContent' theMetaKey meta
 					case contentM of
 						Nothing -> error "Meta content not found"
 						Just content -> putStr content
@@ -101,13 +117,15 @@ main = do
 			vs <- getMetaNames keyid
 			mapM_ (putStrLn) vs
 		["edit", keyidHex, mname] -> do
+			ensureSuppliedMetaKey
+			announceMetaKey
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			v <- getMeta keyid mname
 			case v of
 				Nothing -> error "Meta not found"
 				Just meta -> do
-					cont <- findMetaContent' meta
+					cont <- findMetaContent' theMetaKey meta
 					case cont of
 						Nothing -> error "Meta content not found"
 						Just cs -> do
@@ -122,19 +140,20 @@ main = do
 									case JSON.fromString modified of
 										Left errmsg -> error $ "JSON parsing error: " ++ errmsg
 										Right _ -> do
-											uri <- insertData theKey (BUL.fromString modified)
+											uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ modified)
 											newmetaM <- regenMeta $ meta {contentURI = uri}
 											case newmetaM of
 												Nothing -> error "Failed to re-sign meta"
 												Just newmeta -> storeMeta newmeta
 		["replace", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
+			announceMetaKey
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			contentV <- getContents
 			case JSON.fromString contentV of
 				Left errmsg -> error $ "JSON parsing error: " ++ errmsg
 				Right _ -> do
-					contentURIV <- insertData theKey (BUL.fromString contentV)
+					contentURIV <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ contentV)
 					newMetaM <- regenMeta Meta {
 						contentURI = contentURIV,
 						keyID = keyid,
@@ -151,8 +170,9 @@ main = do
 			keyID <- generateKeyPair
 			putStrLn $ "Your key ID is " ++ hashToHex keyID
 		["new", keyidHex, mname] -> do
+			announceMetaKey
 			keyid <- resolveKeyName keyidHex
-			emptyUri <- insertData theKey $ BUL.fromString "{}"
+			emptyUri <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString "{}"
 			newMetaM <- regenMeta Meta {
 				contentURI = emptyUri,
 				keyID = keyid,

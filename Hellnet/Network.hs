@@ -300,48 +300,50 @@ fetchMetaFromNode node keyId mName = do
 		return meta
 		) result
 
-findMetaContent :: Meta -> IO (Maybe Json)
-findMetaContent m = do
-	cont <- findMetaContent' m
+findMetaContent :: Maybe Key -> Meta -> IO (Maybe Json)
+findMetaContent encKey m = do
+	cont <- findMetaContent' encKey m
 	return $ case cont of
 		Nothing -> Nothing
 		Just s -> case JSON.fromString s of
 			Left _ -> Nothing
 			Right js -> Just js
 
-findMetaContent' :: Meta -> IO (Maybe String)
-findMetaContent' m = do
+findMetaContent' :: Maybe Key -> Meta -> IO (Maybe String)
+findMetaContent' encKey m = do
 	cont <- findURI (contentURI m)
-	return $ case cont of
+	let decryptedCont = fmap (maybe (id) (decryptSym) encKey) cont
+	return $ case decryptedCont of
 		Nothing -> Nothing
-		Just bs -> case JSON.fromString (BUL.toString bs) of
+		Just bs -> case JSON.fromString (BUL.toString $ bs) of
 			Left _ -> Nothing
 			Right js -> Just $ BUL.toString bs
 
-findMetaContentByName :: KeyID -> String -> IO (Maybe Json)
-findMetaContentByName kid mname = do
+findMetaContentByName :: Maybe Key -> KeyID -> String -> IO (Maybe Json)
+findMetaContentByName encKey kid mname = do
 	metaM <- getMeta kid mname
 	case metaM of
 		Nothing -> return Nothing
-		Just meta -> findMetaContent meta
+		Just meta -> findMetaContent encKey meta
 
-findMetaContentByName' :: KeyID -> String -> IO (Maybe String)
-findMetaContentByName' kid mname = do
+findMetaContentByName' :: Maybe Key -> KeyID -> String -> IO (Maybe String)
+findMetaContentByName' encKey kid mname = do
 	metaM <- getMeta kid mname
 	case metaM of
 		Nothing -> return Nothing
-		Just meta -> findMetaContent' meta
+		Just meta -> findMetaContent' encKey meta
 
-findMetaValue :: KeyID -- ^ public key ID
+findMetaValue :: Maybe Key
+	-> KeyID -- ^ public key ID
 	-> String -- ^ Meta name
 	-> String -- ^ Meta JPath
 	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
-findMetaValue keyId mName mPath = do
+findMetaValue encKey keyId mName mPath = do
 	meta <- getMeta keyId mName
 	case meta of
 		Nothing -> return Nothing
 		Just m -> do
-			cont <- findMetaContent m
+			cont <- findMetaContent encKey m
 			case cont of
 				Nothing -> return Nothing
 				Just j -> return $ Just $ jPath mPath j
