@@ -4,9 +4,11 @@ Easy & fun (but i'm probably doing it right now)
 
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Replace maybe's w/cases
- * Make hell-dir verbose
  * Add option to hell-dir to check hashes
  * Add option to it to force reinserting
+ * Add more comments to meta methods and such
+ * s/String/JPathlike/
+ * Get rid of Stringy meta contents
 
 Boring
 

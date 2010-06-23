@@ -2,7 +2,7 @@ all: hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-talk he
 lib = Hellnet.hs Hellnet/*.hs
 execs = hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-dir
 $(execs): %: %.hs $(lib)
-	ghc --make -hide-package transformers $@
+	ghc --make -hide-package transformers -hide-package monads-tf -hide-package monads-fd $@
 clean:
 	find -name "*.hi" -exec rm {} \;
 	find -name "*.o" -exec rm {} \;
