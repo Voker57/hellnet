@@ -90,8 +90,7 @@ pullTreeWalker cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
 	removeDirectoryRecursive cpath
 	pullTreeWalker cpath (File rmtime link) Nothing
 pullTreeWalker cpath (File rmtime link) (Just (File lmtime llink)) = do
-	if rmtime == lmtime then do
-		printf "File %s is no older then remote one; skipping\n" cpath
+	if rmtime == lmtime then
 		return ()
 		else do
 		printf "File %s needs updating\n" cpath
@@ -122,8 +121,7 @@ pushTreeWalker cpath (Dir lmtime lfiles) Nothing = do
 	return $ Dir lmtime $ Map.fromList lfiles'
 -- File cases
 pushTreeWalker cpath (File lmtime link) (Just (File rmtime rlink)) = do
-	if rmtime == lmtime then do
-		printf "File %s is no older then remote one; skipping\n" cpath
+	if rmtime == lmtime then
 		return $ File rmtime rlink
 		else do
 		printf "File %s needs updating\n" cpath
