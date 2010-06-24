@@ -4,6 +4,7 @@ import qualified Data.ByteString.Lazy      as BSL
 import qualified Data.ByteString.Lazy.UTF8 as BUL
 import           Data.Maybe
 import           Hellnet
+import           Hellnet.Crypto
 import           Hellnet.Files
 import           Hellnet.Meta
 import           Hellnet.Network
@@ -43,19 +44,31 @@ instance Jsonable FileTree where
 		("contents", toJson conts)
 		]
 		
-data Opts = Opts { recursive :: Bool, encrypt :: Bool, encKey :: Maybe Key, updateMeta :: Bool}
+data Opts = Opts {
+	encrypt :: Bool,
+	encKey :: Maybe Key,
+	updateMeta :: Bool,
+	encryptMeta :: Bool,
+	metaEncKey :: Maybe Key
+	}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
-	Option ['r'] ["recursive"]
-		(NoArg (\o -> o {recursive = True}) ) "Recurse into subdirectories",
+	Option ['m'] ["meta-encryption"]
+		(OptArg (\s o ->  o {encryptMeta = True, metaEncKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Use encryption on meta (optionally (if encrypting) with specified key)",
 	Option ['e'] ["encrypt"]
 		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
 	Option ['u'] ["update-meta"]
 		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval"
 	]
 
-defaultOptions = Opts { recursive = False, encrypt = False, encKey = Nothing, updateMeta = False }
+defaultOptions = Opts {
+	encrypt = False,
+	encKey = Nothing,
+	updateMeta = False,
+	encryptMeta = False,
+	metaEncKey = Nothing
+	}
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
 convertTree fs d@(Tree.Dir{}) = do
@@ -139,13 +152,20 @@ main = do
 		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
 		else
 		return Nothing
+	theMetaKey <- if encryptMeta opts then
+		(return . Just) =<< (maybe (genKey) (return) $ metaEncKey opts)
+		else
+		return Nothing
 	let [action, dirName, metaKey, mName] = args
 	keyid <- resolveKeyName metaKey
 	when (updateMeta opts) (fetchMeta keyid mName >> return ())
+	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
+	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
 	case action of
 		"pull" -> do
+			ensureSuppliedMetaKey
 			putStrLn "Synchronizing local tree with remote"
-			contM <- findMetaContentByName keyid mName
+			contM <- findMetaContentByName theMetaKey keyid mName
 			let remoteTree = case contM of
 				Just cont -> fromMaybe (error "Couldn't load file tree") $ fromJson cont
 				Nothing -> error "Couldn't parse JSON"
@@ -156,12 +176,14 @@ main = do
 			
 			currentTree' <- (pullTreeWalker dirName remoteTree $ Just currentTree)
 			putStrLn "All done"
+			announceMetaKey
 		"push" -> do
 			putStrLn "Synchronizing remote tree with local"
 			metaM <- findMeta keyid mName
+			when (isJust metaM) (ensureSuppliedMetaKey)
 			when (isNothing metaM) $ putStrLn "Warning: Meta not found. Creating new one."
 			let meta = fromMaybe (emptyMeta {keyID = keyid, metaName = mName}) metaM
-			contM <- findMetaContent meta
+			contM <- findMetaContent theMetaKey meta
 			let remoteTree = (fromMaybe (Nothing) $ fmap (fromJson) contM) :: Maybe FileTree
 			
 			putStrLn "Reading directory tree..."
@@ -172,10 +194,11 @@ main = do
 			putStrLn "Updating index..."
 			remoteTree' <- pushTreeWalker dirName currentTree remoteTree
 			putStrLn "Updating meta..."
-			link' <- insertData theKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
+			link' <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
 			newMetaM <- regenMeta $ meta {contentURI = link'}
 			case newMetaM of
 				Nothing -> error "Failed to sign meta"
 				Just newMeta -> do
 					storeMeta newMeta
 					putStrLn "Success"
+					announceMetaKey
