@@ -111,7 +111,7 @@ main = do
 					contentM <- findMetaContent' theMetaKey meta
 					case contentM of
 						Nothing -> error "Meta content not found"
-						Just content -> putStr content
+						Just content -> BSL.putStr content
 		["get", keyidHex] -> do
 			keyid <- resolveKeyName keyidHex
 			vs <- getMetaNames keyid
@@ -128,44 +128,38 @@ main = do
 						Nothing -> error "Meta content not found"
 						Just cs -> do
 							(fP, hdl) <- openTempFile "/tmp" "hellnetmeta"
-							hPutStr hdl cs
+							BSL.hPut hdl cs
 							hClose hdl
 							returnCode <- rawSystem "editor" [fP]
 							case returnCode of
 								ExitFailure i -> error $ "editor failed with code: " ++ show i
 								ExitSuccess -> do
-									modified <- readFile fP
-									case JSON.fromString modified of
-										Left errmsg -> error $ "JSON parsing error: " ++ errmsg
-										Right _ -> do
-											uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ modified)
-											newmetaM <- regenMeta $ meta {contentURI = uri}
-											case newmetaM of
-												Nothing -> error "Failed to re-sign meta"
-												Just newmeta -> do
-													storeMeta newmeta
-													ensureSuppliedMetaKey
+									modified <- BSL.readFile fP
+									uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ modified)
+									newmetaM <- regenMeta $ meta {contentURI = uri}
+									case newmetaM of
+										Nothing -> error "Failed to re-sign meta"
+										Just newmeta -> do
+											storeMeta newmeta
+											ensureSuppliedMetaKey
 		["replace", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
-			contentV <- getContents
-			case JSON.fromString contentV of
-				Left errmsg -> error $ "JSON parsing error: " ++ errmsg
-				Right _ -> do
-					contentURIV <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ contentV)
-					newMetaM <- regenMeta Meta {
-						contentURI = contentURIV,
-						keyID = keyid,
-						timestamp = 0,
-						message = Nothing,
-						signature = Nothing,
-						metaName = mname
-						}
-					case newMetaM of
-						Nothing -> error "Failed to sign meta"
-						Just newMeta -> do
-							storeMeta newMeta
-							announceMetaKey
+			contentV <- BSL.getContents
+			contentURIV <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ contentV)
+			newMetaM <- regenMeta Meta {
+				contentURI = contentURIV,
+				keyID = keyid,
+				timestamp = 0,
+				message = Nothing,
+				signature = Nothing,
+				metaName = mname
+				}
+			case newMetaM of
+				Nothing -> error "Failed to sign meta"
+				Just newMeta -> do
+					storeMeta newMeta
+					announceMetaKey
 		["genkey"] -> do
 			putStrLn "Generating keys..."
 			keyID <- generateKeyPair

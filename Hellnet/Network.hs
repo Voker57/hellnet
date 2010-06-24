@@ -305,19 +305,14 @@ findMetaContent encKey m = do
 	cont <- findMetaContent' encKey m
 	return $ case cont of
 		Nothing -> Nothing
-		Just s -> case JSON.fromString s of
+		Just s -> case JSON.fromString $ BUL.toString s of
 			Left _ -> Nothing
 			Right js -> Just js
 
-findMetaContent' :: Maybe Key -> Meta -> IO (Maybe String)
+findMetaContent' :: Maybe Key -> Meta -> IO (Maybe BSL.ByteString)
 findMetaContent' encKey m = do
 	cont <- findURI (contentURI m)
-	let decryptedCont = fmap (maybe (id) (decryptSym) encKey) cont
-	return $ case decryptedCont of
-		Nothing -> Nothing
-		Just bs -> case JSON.fromString (BUL.toString $ bs) of
-			Left _ -> Nothing
-			Right js -> Just $ BUL.toString bs
+	return $ fmap (maybe (id) (decryptSym) encKey) cont
 
 findMetaContentByName :: Maybe Key -> KeyID -> String -> IO (Maybe Json)
 findMetaContentByName encKey kid mname = do
@@ -326,7 +321,7 @@ findMetaContentByName encKey kid mname = do
 		Nothing -> return Nothing
 		Just meta -> findMetaContent encKey meta
 
-findMetaContentByName' :: Maybe Key -> KeyID -> String -> IO (Maybe String)
+findMetaContentByName' :: Maybe Key -> KeyID -> String -> IO (Maybe BSL.ByteString)
 findMetaContentByName' encKey kid mname = do
 	metaM <- getMeta kid mname
 	case metaM of

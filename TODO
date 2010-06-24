@@ -8,7 +8,6 @@ Easy & fun (but i'm probably doing it right now)
  * Add option to it to force reinserting
  * Add more comments to meta methods and such
  * s/String/JPathlike/
- * Get rid of Stringy meta contents
  * Write help for hell-dir
  * .hell-ignore
  * Meta links instead of current crap
