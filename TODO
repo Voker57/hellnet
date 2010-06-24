@@ -7,8 +7,6 @@ Easy & fun (but i'm probably doing it right now)
  * Add option to hell-dir to check hashes
  * Add option to it to force reinserting
  * Add more comments to meta methods and such
- * Dry run option for h-dir
- * Meta pprinting
 
 Boring
 
@@ -17,6 +15,7 @@ Boring
  * "Hashed" schema
  * Sizes!
  * Meta links instead of current crap
+ * Meta pprinting
 
 Non-trivial
 

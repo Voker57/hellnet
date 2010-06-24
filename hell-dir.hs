@@ -52,7 +52,8 @@ data Opts = Opts {
 	updateMeta :: Bool,
 	encryptMeta :: Bool,
 	metaEncKey :: Maybe Key,
-	verbose :: Bool
+	verbose :: Bool,
+	dryRun :: Bool
 	}
 
 options :: [OptDescr (Opts -> Opts)]
@@ -64,7 +65,9 @@ options = [
 	Option ['u'] ["update-meta"]
 		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval",
 	Option ['v'] ["verbose"]
-		(NoArg (\o -> o {verbose = True})) "Be verbose"
+		(NoArg (\o -> o {verbose = True})) "Be verbose",
+	Option ['d'] ["dry-run"]
+		(NoArg (\o -> o {dryRun = True})) "Do not actually touch anything"
 	]
 
 defaultOptions = Opts {
@@ -73,7 +76,8 @@ defaultOptions = Opts {
 	updateMeta = False,
 	encryptMeta = False,
 	metaEncKey = Nothing,
-	verbose = False
+	verbose = False,
+	dryRun = False
 	}
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
@@ -94,33 +98,33 @@ convertTree _ _ = return Nothing
 
 pullTreeWalker ignores opts cpath (Dir rmtime rfiles) (Just (File _ _)) = do
 	printf "File %s exists, but it should be a directory; deleting\n" $ joinPath cpath
-	removeFile $ joinPath cpath
+	when (not $ dryRun opts) $ removeFile $ joinPath cpath
 	pullTreeWalker ignores opts cpath (Dir rmtime rfiles) Nothing
 pullTreeWalker ignores opts cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
 	when (verbose opts) $ printf "Traversing directory %s\n" $ joinPath cpath
 	mapM_ (\(name, tree) -> pullTreeWalker ignores opts (cpath ++ [name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
 pullTreeWalker ignores opts cpath (Dir rmtime rfiles) Nothing = do
 	printf "Creating directory %s\n" $ joinPath cpath
-	createDirectoryIfMissing True $ joinPath cpath
+	when (not $ dryRun opts) $ createDirectoryIfMissing True $ joinPath cpath
 	mapM_ (\(name, tree) -> pullTreeWalker ignores opts (cpath ++ [name]) tree Nothing) $ Map.toList rfiles
 -- File cases
 pullTreeWalker ignores opts cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
 	printf "Directory %s exists, but it should be a file instead;  rm-r'ing\n" $ joinPath cpath
-	removeDirectoryRecursive $ joinPath cpath
+	when (not $ dryRun opts) $ removeDirectoryRecursive $ joinPath cpath
 	pullTreeWalker ignores opts cpath (File rmtime link) Nothing
 pullTreeWalker ignores opts cpath (File rmtime link) (Just (File lmtime llink)) = do
 	if rmtime == lmtime then do
 		when (verbose opts) $ printf "File %s is as new as remote one; skipping\n" $ joinPath cpath
 		return ()
 		else do
-		removeFile $ joinPath cpath
+		when (not $ dryRun opts) $ removeFile $ joinPath cpath
 		pullTreeWalker ignores opts cpath (File rmtime link) Nothing
 pullTreeWalker ignores opts cpath (File rmtime link) Nothing = do
 	printf "Updating file %s\n" $ joinPath cpath
 	mBsl <- findURI $ fromMaybe (error "bad link") $ parseHellnetURI link
 	case mBsl of
 		Nothing -> error ("URI " ++ link ++ " not found!")
-		Just conts -> BSL.writeFile (joinPath cpath) conts
+		Just conts -> when (not $ dryRun opts) $ BSL.writeFile (joinPath cpath) conts
 
 pushTreeWalker ignores opts cpath (Dir lmtime lfiles) (Just (File _ _)) = do
 	printf "File %s exists, but it should be a directory; deleting\n" $ joinPath cpath
@@ -193,7 +197,6 @@ main = do
 		["pull", dirName, metaKey, mName] -> do
 			keyid <- resolveKeyName metaKey
 			ignores <- getIgnores dirName
-			readFile $ joinPath [dirName, ".hell-ignore"]
 			when (updateMeta opts) (fetchMeta keyid mName >> return ())
 			ensureSuppliedMetaKey
 			putStrLn "Synchronizing local tree with remote"
@@ -228,15 +231,16 @@ main = do
 			
 			putStrLn "Updating index..."
 			remoteTree' <- pushTreeWalker ignores opts [dirName] currentTree remoteTree
-			putStrLn "Updating meta..."
-			link' <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
-			newMetaM <- regenMeta $ meta {contentURI = link'}
-			case newMetaM of
-				Nothing -> error "Failed to sign meta"
-				Just newMeta -> do
-					storeMeta newMeta
-					putStrLn "Success"
-					announceMetaKey
+			when (not $ dryRun opts) $ do
+				putStrLn "Updating meta..."
+				link' <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
+				newMetaM <- regenMeta $ meta {contentURI = link'}
+				case newMetaM of
+					Nothing -> error "Failed to sign meta"
+					Just newMeta -> do
+						storeMeta newMeta
+						putStrLn "Success"
+			announceMetaKey
 		otherwise -> do
 			let usageStrings =  [
 				"push <path> <key id> <meta name>    -- Update meta to match file structure in <path>",
