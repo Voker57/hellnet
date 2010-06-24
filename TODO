@@ -9,6 +9,11 @@ Easy & fun (but i'm probably doing it right now)
  * Add more comments to meta methods and such
  * s/String/JPathlike/
  * Get rid of Stringy meta contents
+ * Write help for hell-dir
+ * .hell-ignore
+ * Remove meta in hell-meta
+ * Remove traversal messages
+ * Announce mkey after end
 
 Boring
 
