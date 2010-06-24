@@ -73,7 +73,7 @@ import Random
 import Safe
 import System.IO.Error
 import Text.HJson as JSON
-import Text.JSON.JPath
+import Text.JSON.JPath as JPath
 
 getNodesList :: IO [Node]
 getNodesList = do
@@ -328,10 +328,10 @@ findMetaContentByName' encKey kid mname = do
 		Nothing -> return Nothing
 		Just meta -> findMetaContent' encKey meta
 
-findMetaValue :: Maybe Key
+findMetaValue :: (JPath.QueryLike a) => Maybe Key
 	-> KeyID -- ^ public key ID
 	-> String -- ^ Meta name
-	-> String -- ^ Meta JPath
+	-> a -- ^ Meta JPath
 	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
 findMetaValue encKey keyId mName mPath = do
 	meta <- getMeta keyId mName

@@ -7,10 +7,8 @@ Easy & fun (but i'm probably doing it right now)
  * Add option to hell-dir to check hashes
  * Add option to it to force reinserting
  * Add more comments to meta methods and such
- * s/String/JPathlike/
  * Write help for hell-dir
  * .hell-ignore
- * Meta links instead of current crap
 
 Boring
 
@@ -18,6 +16,7 @@ Boring
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
  * "Hashed" schema
  * Sizes!
+ * Meta links instead of current crap
 
 Non-trivial
 
