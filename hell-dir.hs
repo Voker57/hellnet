@@ -15,6 +15,7 @@ import           Hellnet.Utils
 import           System.Console.GetOpt
 import           System.Environment                (getArgs)
 import           System.FilePath
+import           System.FilePath.Glob      as Glob
 import           System.Directory
 import           System.Time
 import qualified System.Directory.Tree     as Tree
@@ -91,63 +92,88 @@ convertTree fs d@(Tree.File{}) = do
 	return $ Just $ File i ""
 convertTree _ _ = return Nothing
 
-pullTreeWalker opts cpath (Dir rmtime rfiles) (Just (File _ _)) = do
-	printf "File %s exists, but it should be a directory; deleting\n" cpath
-	removeFile cpath
-	pullTreeWalker opts cpath (Dir rmtime rfiles) Nothing
-pullTreeWalker opts cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
-	when (verbose opts) $ printf "Traversing directory %s\n" cpath
-	mapM_ (\(name, tree) -> pullTreeWalker opts (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
-pullTreeWalker opts cpath (Dir rmtime rfiles) Nothing = do
-	printf "Creating directory %s\n" cpath
-	createDirectoryIfMissing True cpath
-	mapM_ (\(name, tree) -> pullTreeWalker opts (joinPath [cpath, name]) tree Nothing) $ Map.toList rfiles
+pullTreeWalker ignores opts cpath (Dir rmtime rfiles) (Just (File _ _)) = do
+	printf "File %s exists, but it should be a directory; deleting\n" $ joinPath cpath
+	removeFile $ joinPath cpath
+	pullTreeWalker ignores opts cpath (Dir rmtime rfiles) Nothing
+pullTreeWalker ignores opts cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
+	when (verbose opts) $ printf "Traversing directory %s\n" $ joinPath cpath
+	mapM_ (\(name, tree) -> pullTreeWalker ignores opts (cpath ++ [name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
+pullTreeWalker ignores opts cpath (Dir rmtime rfiles) Nothing = do
+	printf "Creating directory %s\n" $ joinPath cpath
+	createDirectoryIfMissing True $ joinPath cpath
+	mapM_ (\(name, tree) -> pullTreeWalker ignores opts (cpath ++ [name]) tree Nothing) $ Map.toList rfiles
 -- File cases
-pullTreeWalker opts cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
-	printf "Directory %s exists, but it should be a file instead;  rm-r'ing\n" cpath
-	removeDirectoryRecursive cpath
-	pullTreeWalker opts cpath (File rmtime link) Nothing
-pullTreeWalker opts cpath (File rmtime link) (Just (File lmtime llink)) = do
+pullTreeWalker ignores opts cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
+	printf "Directory %s exists, but it should be a file instead;  rm-r'ing\n" $ joinPath cpath
+	removeDirectoryRecursive $ joinPath cpath
+	pullTreeWalker ignores opts cpath (File rmtime link) Nothing
+pullTreeWalker ignores opts cpath (File rmtime link) (Just (File lmtime llink)) = do
 	if rmtime == lmtime then do
-		when (verbose opts) $ printf "File %s is as new as remote one; skipping\n" cpath
+		when (verbose opts) $ printf "File %s is as new as remote one; skipping\n" $ joinPath cpath
 		return ()
 		else do
-		removeFile cpath
-		pullTreeWalker opts cpath (File rmtime link) Nothing
-pullTreeWalker opts cpath (File rmtime link) Nothing = do
-	printf "Updating file %s\n" cpath
+		removeFile $ joinPath cpath
+		pullTreeWalker ignores opts cpath (File rmtime link) Nothing
+pullTreeWalker ignores opts cpath (File rmtime link) Nothing = do
+	printf "Updating file %s\n" $ joinPath cpath
 	mBsl <- findURI $ fromMaybe (error "bad link") $ parseHellnetURI link
 	case mBsl of
 		Nothing -> error ("URI " ++ link ++ " not found!")
-		Just conts -> BSL.writeFile cpath conts
+		Just conts -> BSL.writeFile (joinPath cpath) conts
 
-pushTreeWalker opts cpath (Dir lmtime lfiles) (Just (File _ _)) = do
-	printf "File %s exists, but it should be a directory; deleting\n" cpath
-	removeFile cpath
-	pushTreeWalker opts cpath (Dir lmtime lfiles) Nothing
-pushTreeWalker opts cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
-	when (verbose opts) $ printf "Traversing directory %s\n" cpath
+pushTreeWalker ignores opts cpath (Dir lmtime lfiles) (Just (File _ _)) = do
+	printf "File %s exists, but it should be a directory; deleting\n" $ joinPath cpath
+	removeFile $ joinPath cpath
+	pushTreeWalker ignores opts cpath (Dir lmtime lfiles) Nothing
+pushTreeWalker ignores opts cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
+	when (verbose opts) $ printf "Traversing directory %s\n" $ joinPath cpath
 	lfiles' <- mapM (\(name, tree) -> do
-		tree' <- pushTreeWalker opts (joinPath [cpath, name]) tree $ Map.lookup name rfiles
-		return (name, tree')) $ Map.toList lfiles
-	return $ Dir lmtime $ Map.fromList lfiles'
-pushTreeWalker opts cpath (Dir lmtime lfiles) Nothing = do
-	printf "Creating directory %s\n" cpath
-	lfiles' <- mapM (\(key, value) -> do
-		tree' <- pushTreeWalker opts (joinPath [cpath, key]) value Nothing
-		return (key, tree')) $ Map.toList $ lfiles
-	return $ Dir lmtime $ Map.fromList lfiles'
+		let path' = cpath ++ [name]
+		let ignoredpath = zipWith ($) (map (Glob.match) ignores) $ repeat $ joinPath $ tail path'
+		let ignoredfile = zipWith ($) (map (Glob.match) ignores) $ repeat name
+		if or (ignoredpath ++ ignoredfile) then do
+			when (verbose opts) $ printf "Omitting entry %s\n" $ joinPath path'
+			return Nothing
+			else do
+			tree' <- pushTreeWalker ignores opts (path') tree $ Map.lookup name rfiles
+			return $ Just (name, tree')
+		) $ Map.toList lfiles
+	return $ Dir lmtime $ Map.fromList $ catMaybes lfiles'
+pushTreeWalker ignores opts cpath (Dir lmtime lfiles) Nothing = do
+	printf "Creating directory %s\n" $ joinPath cpath
+	lfiles' <- mapM (\(name, tree) -> do
+		let path' = cpath ++ [name]
+		let ignoredpath = zipWith ($) (map (Glob.match) ignores) $ repeat $ joinPath $ tail path'
+		let ignoredfile = zipWith ($) (map (Glob.match) ignores) $ repeat name
+		if or (ignoredpath ++ ignoredfile) then do
+			when (verbose opts) $ printf "Omitting entry %s\n" $ joinPath path'
+			return Nothing
+			else do
+			tree' <- pushTreeWalker ignores opts (cpath ++ [name]) tree Nothing
+			return $ Just (name, tree')
+		) $ Map.toList $ lfiles
+	return $ Dir lmtime $ Map.fromList $ catMaybes lfiles'
 -- File cases
-pushTreeWalker opts cpath (File lmtime link) (Just (File rmtime rlink)) = do
+pushTreeWalker ignores opts cpath (File lmtime link) (Just (File rmtime rlink)) = do
 	if rmtime == lmtime then do
-		when (verbose opts) $ printf "File %s is as new as local one; skipping\n" cpath
+		when (verbose opts) $ printf "File %s is as new as local one; skipping\n" $ joinPath cpath
 		return $ File rmtime rlink
 		else do
-		pushTreeWalker opts cpath (File lmtime link) Nothing
-pushTreeWalker opts cpath (File lmtime _) _ = do
-	printf "Updating file %s\n" cpath
-	url <- insertData Nothing =<< BSL.readFile cpath
+		pushTreeWalker ignores opts cpath (File lmtime link) Nothing
+pushTreeWalker ignores opts cpath (File lmtime _) _ = do
+	printf "Updating file %s\n" $ joinPath cpath
+	url <- insertData Nothing =<< BSL.readFile (joinPath cpath)
 	return (File lmtime $ show url)
+
+getIgnores dir = do
+	let fpath = joinPath [dir, ".helldirignore"]
+	exists <- doesFileExist fpath
+	if exists then do
+		cont <- readFile fpath
+		return $ map (Glob.compile) $ lines cont
+		else
+		return []
 
 main = do
 	argz <- getArgs
@@ -164,8 +190,10 @@ main = do
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
 	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
 	case args of
-		["pull", action, dirName, metaKey, mName] -> do
+		["pull", dirName, metaKey, mName] -> do
 			keyid <- resolveKeyName metaKey
+			ignores <- getIgnores dirName
+			readFile $ joinPath [dirName, ".hell-ignore"]
 			when (updateMeta opts) (fetchMeta keyid mName >> return ())
 			ensureSuppliedMetaKey
 			putStrLn "Synchronizing local tree with remote"
@@ -178,12 +206,13 @@ main = do
 			currentTreeM <- convertTree [dirName] $ Tree.free dirTree
 			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
-			currentTree' <- (pullTreeWalker opts dirName remoteTree $ Just currentTree)
+			currentTree' <- (pullTreeWalker ignores opts [dirName] remoteTree $ Just currentTree)
 			putStrLn "All done"
 			announceMetaKey
-		["push", action, dirName, metaKey, mName] -> do
+		["push", dirName, metaKey, mName] -> do
 			keyid <- resolveKeyName metaKey
 			when (updateMeta opts) (fetchMeta keyid mName >> return ())
+			ignores <- getIgnores dirName
 			putStrLn "Synchronizing remote tree with local"
 			metaM <- findMeta keyid mName
 			when (isJust metaM) (ensureSuppliedMetaKey)
@@ -198,7 +227,7 @@ main = do
 			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
 			putStrLn "Updating index..."
-			remoteTree' <- pushTreeWalker opts dirName currentTree remoteTree
+			remoteTree' <- pushTreeWalker ignores opts [dirName] currentTree remoteTree
 			putStrLn "Updating meta..."
 			link' <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
 			newMetaM <- regenMeta $ meta {contentURI = link'}
