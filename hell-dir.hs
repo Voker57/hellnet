@@ -49,7 +49,8 @@ data Opts = Opts {
 	encKey :: Maybe Key,
 	updateMeta :: Bool,
 	encryptMeta :: Bool,
-	metaEncKey :: Maybe Key
+	metaEncKey :: Maybe Key,
+	verbose :: Bool
 	}
 
 options :: [OptDescr (Opts -> Opts)]
@@ -59,7 +60,9 @@ options = [
 	Option ['e'] ["encrypt"]
 		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
 	Option ['u'] ["update-meta"]
-		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval"
+		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval",
+	Option ['v'] ["verbose"]
+		(NoArg (\o -> o {verbose = True})) "Be verbose"
 	]
 
 defaultOptions = Opts {
@@ -67,7 +70,8 @@ defaultOptions = Opts {
 	encKey = Nothing,
 	updateMeta = False,
 	encryptMeta = False,
-	metaEncKey = Nothing
+	metaEncKey = Nothing,
+	verbose = False
 	}
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
@@ -86,60 +90,60 @@ convertTree fs d@(Tree.File{}) = do
 	return $ Just $ File i ""
 convertTree _ _ = return Nothing
 
-pullTreeWalker cpath (Dir rmtime rfiles) (Just (File _ _)) = do
+pullTreeWalker opts cpath (Dir rmtime rfiles) (Just (File _ _)) = do
 	printf "File %s exists, but it should be a directory; deleting\n" cpath
 	removeFile cpath
-	pullTreeWalker cpath (Dir rmtime rfiles) Nothing
-pullTreeWalker cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
-	printf "Traversing directory %s\n" cpath
-	mapM_ (\(name, tree) -> pullTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
-pullTreeWalker cpath (Dir rmtime rfiles) Nothing = do
+	pullTreeWalker opts cpath (Dir rmtime rfiles) Nothing
+pullTreeWalker opts cpath (Dir rmtime rfiles) (Just (Dir lmtime lfiles)) = do
+	when (verbose opts) $ printf "Traversing directory %s\n" cpath
+	mapM_ (\(name, tree) -> pullTreeWalker opts (joinPath [cpath, name]) tree $ Map.lookup name lfiles) $ Map.toList rfiles
+pullTreeWalker opts cpath (Dir rmtime rfiles) Nothing = do
 	printf "Creating directory %s\n" cpath
 	createDirectoryIfMissing True cpath
-	mapM_ (\(name, tree) -> pullTreeWalker (joinPath [cpath, name]) tree Nothing) $ Map.toList rfiles
+	mapM_ (\(name, tree) -> pullTreeWalker opts (joinPath [cpath, name]) tree Nothing) $ Map.toList rfiles
 -- File cases
-pullTreeWalker cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
-	printf "Directory %s exists, but it should be a file instead;  rm-r'ing" cpath
+pullTreeWalker opts cpath (File rmtime link) (Just (Dir lmtime lfiles)) = do
+	printf "Directory %s exists, but it should be a file instead;  rm-r'ing\n" cpath
 	removeDirectoryRecursive cpath
-	pullTreeWalker cpath (File rmtime link) Nothing
-pullTreeWalker cpath (File rmtime link) (Just (File lmtime llink)) = do
-	if rmtime == lmtime then
+	pullTreeWalker opts cpath (File rmtime link) Nothing
+pullTreeWalker opts cpath (File rmtime link) (Just (File lmtime llink)) = do
+	if rmtime == lmtime then do
+		when (verbose opts) $ printf "File %s is as new as remote one; skipping\n" cpath
 		return ()
 		else do
-		printf "File %s needs updating\n" cpath
 		removeFile cpath
-		pullTreeWalker cpath (File rmtime link) Nothing
-pullTreeWalker cpath (File rmtime link) Nothing = do
+		pullTreeWalker opts cpath (File rmtime link) Nothing
+pullTreeWalker opts cpath (File rmtime link) Nothing = do
 	printf "Updating file %s\n" cpath
 	mBsl <- findURI $ fromMaybe (error "bad link") $ parseHellnetURI link
 	case mBsl of
 		Nothing -> error ("URI " ++ link ++ " not found!")
 		Just conts -> BSL.writeFile cpath conts
 
-pushTreeWalker cpath (Dir lmtime lfiles) (Just (File _ _)) = do
+pushTreeWalker opts cpath (Dir lmtime lfiles) (Just (File _ _)) = do
 	printf "File %s exists, but it should be a directory; deleting\n" cpath
 	removeFile cpath
-	pushTreeWalker cpath (Dir lmtime lfiles) Nothing
-pushTreeWalker cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
-	printf "Traversing directory %s\n" cpath
+	pushTreeWalker opts cpath (Dir lmtime lfiles) Nothing
+pushTreeWalker opts cpath (Dir lmtime lfiles) (Just (Dir rmtime rfiles)) = do
+	when (verbose opts) $ printf "Traversing directory %s\n" cpath
 	lfiles' <- mapM (\(name, tree) -> do
-		tree' <- pushTreeWalker (joinPath [cpath, name]) tree $ Map.lookup name rfiles
+		tree' <- pushTreeWalker opts (joinPath [cpath, name]) tree $ Map.lookup name rfiles
 		return (name, tree')) $ Map.toList lfiles
 	return $ Dir lmtime $ Map.fromList lfiles'
-pushTreeWalker cpath (Dir lmtime lfiles) Nothing = do
+pushTreeWalker opts cpath (Dir lmtime lfiles) Nothing = do
 	printf "Creating directory %s\n" cpath
 	lfiles' <- mapM (\(key, value) -> do
-		tree' <- pushTreeWalker (joinPath [cpath, key]) value Nothing
+		tree' <- pushTreeWalker opts (joinPath [cpath, key]) value Nothing
 		return (key, tree')) $ Map.toList $ lfiles
 	return $ Dir lmtime $ Map.fromList lfiles'
 -- File cases
-pushTreeWalker cpath (File lmtime link) (Just (File rmtime rlink)) = do
-	if rmtime == lmtime then
+pushTreeWalker opts cpath (File lmtime link) (Just (File rmtime rlink)) = do
+	if rmtime == lmtime then do
+		when (verbose opts) $ printf "File %s is as new as local one; skipping\n" cpath
 		return $ File rmtime rlink
 		else do
-		printf "File %s needs updating\n" cpath
-		pushTreeWalker cpath (File lmtime link) Nothing
-pushTreeWalker cpath (File lmtime _) _ = do
+		pushTreeWalker opts cpath (File lmtime link) Nothing
+pushTreeWalker opts cpath (File lmtime _) _ = do
 	printf "Updating file %s\n" cpath
 	url <- insertData Nothing =<< BSL.readFile cpath
 	return (File lmtime $ show url)
@@ -174,7 +178,7 @@ main = do
 			currentTreeM <- convertTree [dirName] $ Tree.free dirTree
 			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
-			currentTree' <- (pullTreeWalker dirName remoteTree $ Just currentTree)
+			currentTree' <- (pullTreeWalker opts dirName remoteTree $ Just currentTree)
 			putStrLn "All done"
 			announceMetaKey
 		"push" -> do
@@ -192,7 +196,7 @@ main = do
 			let currentTree = fromMaybe (error "Couldn't traverse local tree") currentTreeM
 			
 			putStrLn "Updating index..."
-			remoteTree' <- pushTreeWalker dirName currentTree remoteTree
+			remoteTree' <- pushTreeWalker opts dirName currentTree remoteTree
 			putStrLn "Updating meta..."
 			link' <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ toJson remoteTree'
 			newMetaM <- regenMeta $ meta {contentURI = link'}
