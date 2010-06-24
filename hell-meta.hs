@@ -117,8 +117,6 @@ main = do
 			vs <- getMetaNames keyid
 			mapM_ (putStrLn) vs
 		["edit", keyidHex, mname] -> do
-			ensureSuppliedMetaKey
-			announceMetaKey
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			v <- getMeta keyid mname
@@ -144,10 +142,11 @@ main = do
 											newmetaM <- regenMeta $ meta {contentURI = uri}
 											case newmetaM of
 												Nothing -> error "Failed to re-sign meta"
-												Just newmeta -> storeMeta newmeta
+												Just newmeta -> do
+													storeMeta newmeta
+													ensureSuppliedMetaKey
 		["replace", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
-			announceMetaKey
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			contentV <- getContents
 			case JSON.fromString contentV of
@@ -164,13 +163,14 @@ main = do
 						}
 					case newMetaM of
 						Nothing -> error "Failed to sign meta"
-						Just newMeta -> storeMeta newMeta
+						Just newMeta -> do
+							storeMeta newMeta
+							announceMetaKey
 		["genkey"] -> do
 			putStrLn "Generating keys..."
 			keyID <- generateKeyPair
 			putStrLn $ "Your key ID is " ++ hashToHex keyID
 		["new", keyidHex, mname] -> do
-			announceMetaKey
 			keyid <- resolveKeyName keyidHex
 			emptyUri <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString "{}"
 			newMetaM <- regenMeta Meta {
@@ -183,7 +183,13 @@ main = do
 				}
 			case newMetaM of
 				Nothing -> error "Failed to sign meta"
-				Just newMeta -> storeMeta newMeta
+				Just newMeta -> do
+					storeMeta newMeta
+					announceMetaKey
+		["rm", keyidHex, mname] -> do
+			keyid <- resolveKeyName keyidHex
+			res <- deleteMeta keyid mname
+			when (not res) (fail "No such meta.")
 		["alias", "add", name, keyidHex] -> do
 			keyid <- resolveKeyName keyidHex
 			storeKeyAliases $ Map.insert name keyid keyAliases
@@ -201,6 +207,7 @@ main = do
 				"get <key id> <meta name> <jpath> -- Display results of running jPath expression on meta content, one result per line",
 				"edit <key id> <meta name>        -- launches `editor` to edit specified meta",
 				"replace <key id> <meta name>     -- replaces meta contents with data from STDIN.",
+				"rm <key id> <meta name>          -- removes meta",
 				"genkey                           -- generates new key pair, displays key ID",
 				"new <key id> <meta name>         -- creates new empty meta",
 				"alias add <name> <key id>        -- adds new key alias",

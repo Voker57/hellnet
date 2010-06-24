@@ -19,6 +19,7 @@
 
 module Hellnet.Storage (
 	Hellnet.Storage.generateKeyPair
+	, deleteMeta
 	, getChunk
 	, getDirectory
 	, getDirectory'
@@ -303,3 +304,13 @@ getExternalChunk (FileLocation path offset encKey) = do
 		return $ Just $ maybe (id) (encryptSym) encKey $ chunk
 		else
 		return Nothing
+
+deleteMeta :: KeyID -> String -> IO Bool
+deleteMeta kid mname = do
+	fpath <- toFullPath $ joinPath ["meta", hashToHex kid, mname]
+	exists <- doesFileExist fpath
+	if exists then do
+		removeFile fpath
+		return True
+		else
+		return False
