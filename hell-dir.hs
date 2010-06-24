@@ -2,6 +2,7 @@ import           Control.Monad
 import qualified Data.Map                  as Map
 import qualified Data.ByteString.Lazy      as BSL
 import qualified Data.ByteString.Lazy.UTF8 as BUL
+import           Data.List
 import           Data.Maybe
 import           Hellnet
 import           Hellnet.Crypto
@@ -160,13 +161,12 @@ main = do
 		(return . Just) =<< (maybe (genKey) (return) $ metaEncKey opts)
 		else
 		return Nothing
-	let [action, dirName, metaKey, mName] = args
-	keyid <- resolveKeyName metaKey
-	when (updateMeta opts) (fetchMeta keyid mName >> return ())
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
 	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
-	case action of
-		"pull" -> do
+	case args of
+		["pull", action, dirName, metaKey, mName] -> do
+			keyid <- resolveKeyName metaKey
+			when (updateMeta opts) (fetchMeta keyid mName >> return ())
 			ensureSuppliedMetaKey
 			putStrLn "Synchronizing local tree with remote"
 			contM <- findMetaContentByName theMetaKey keyid mName
@@ -181,7 +181,9 @@ main = do
 			currentTree' <- (pullTreeWalker opts dirName remoteTree $ Just currentTree)
 			putStrLn "All done"
 			announceMetaKey
-		"push" -> do
+		["push", action, dirName, metaKey, mName] -> do
+			keyid <- resolveKeyName metaKey
+			when (updateMeta opts) (fetchMeta keyid mName >> return ())
 			putStrLn "Synchronizing remote tree with local"
 			metaM <- findMeta keyid mName
 			when (isJust metaM) (ensureSuppliedMetaKey)
@@ -206,3 +208,8 @@ main = do
 					storeMeta newMeta
 					putStrLn "Success"
 					announceMetaKey
+		otherwise -> do
+			let usageStrings =  [
+				"push <path> <key id> <meta name>    -- Update meta to match file structure in <path>",
+				"pull <path> <key id> <meta name>    -- Update file structure to match one in meta"
+				] in error $ usageInfo (intercalate "\n" $ map ("hell-dir "++) usageStrings) options ++ concat errs
