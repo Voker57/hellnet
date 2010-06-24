@@ -8,7 +8,6 @@ Easy & fun (but i'm probably doing it right now)
  * Add option to it to force reinserting
  * Add more comments to meta methods and such
  * Write help for hell-dir
- * .hell-ignore
 
 Boring
 
@@ -17,6 +16,7 @@ Boring
  * "Hashed" schema
  * Sizes!
  * Meta links instead of current crap
+ * .hell-ignore
 
 Non-trivial
 
