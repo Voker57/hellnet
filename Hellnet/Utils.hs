@@ -70,7 +70,7 @@ hashToHex :: [Octet] -> String
 hashToHex x = render (hexdumpBy "" 666 x)
 
 hexToHash :: String -> [Octet]
-hexToHash s = map (fst . head . readHex) (splitFor 2 s)
+hexToHash s = map (fst . head . readHex) $ splitFor 2 $ if odd (length s) then '0':s else s
 
 splitFor :: Integer -> [a] -> [[a]]
 splitFor _ [] = []
