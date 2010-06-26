@@ -26,7 +26,9 @@ import Hellnet.Crypto
 import Hellnet.Meta as Meta
 import Hellnet.Network
 import Hellnet.Storage
+import Hellnet.URI
 import Hellnet.Utils
+import Safe
 import System.Console.GetOpt
 import System.Environment
 import System.Exit
@@ -73,18 +75,30 @@ main = do
 	argz <- getArgs
 	keyAliases <- getKeyAliases
 	let (optz, args, errs) = getOpt Permute options argz
-	let opts = processOptions defaultOptions optz
-	theKey <- if encrypt opts then
-		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
-		else
-		return Nothing
+	let preOpts = processOptions defaultOptions optz
+	let (args', opts) = case (atMay args 1, parseHellnetURI (args !! 1)) of
+		(Just _, Just (MetaURI keyid mnameM mpath encKey _)) -> do
+			let
+				namepath =	case (mnameM, mpath) of
+					(Just mname, []) -> [mname]
+					(Just mname, mp) -> [mname, mp]
+					otherwise -> [];
+				opts' = case encKey of
+					Just k -> preOpts {encryptMeta = True, metaEncKey = Just k}
+					otherwise -> preOpts
+					in (head args : hashToHex keyid : namepath, opts')
+		otherwise -> (args, preOpts)
 	theMetaKey <- if encryptMeta opts then
 		(return . Just) =<< (maybe (genKey) (return) $ metaEncKey opts)
 		else
 		return Nothing
+	theKey <- if encrypt opts then
+		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
+		else
+		return Nothing
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
 	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
-	case args of
+	case args' of
 		["update", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
 			fetchMetaPrintResult keyid mname

@@ -17,7 +17,7 @@ data HellnetURI =
 		(Maybe Key) -- ^ Encryption key
 		(Maybe String) -- ^ File name
 	| MetaURI KeyID -- ^ Meta public key ID
-		String -- ^ Meta name
+		(Maybe String) -- ^ Meta name
 		String -- ^ Meta path
 		(Maybe Key) -- ^ Encryption key
 		(Maybe String) -- ^ File name
@@ -41,7 +41,9 @@ instance Show HellnetURI where
 			(MetaURI kid mname mpath key fname) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "meta"
-				, uriPath = "/" ++ intercalate "/" [hashToHex kid, mname, mpath]
+				, uriPath = "/" ++ hashToHex kid ++ "/" ++ case mname of
+					Just mn -> intercalate "/" [mn, mpath]
+					otherwise -> if null mpath then [] else mpath
 				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 	showList = showListWith (const show)
@@ -63,13 +65,11 @@ parseHellnetURI' u = let
 						"file" -> let hsh = hexToHash $ tailSafe $ uriPath u in
 								Just $ FileURI hsh key fname
 						"meta" -> let splitPath = explode '/' $ tailSafe $ uriPath u in
-							if length splitPath < 2 then Nothing
-								else
-								let keyId = hexToHash $ head splitPath;
-									metaName = splitPath !! 1;
-									metaPath = intercalate "/" $ drop 2 splitPath in
-										Just $ MetaURI keyId metaName metaPath key fname
-						otherwise -> Nothing
+							case splitPath of
+								(keyid : mname : mpath) -> Just $ MetaURI (hexToHash keyid) (Just mname) (intercalate "/" mpath) key fname
+								[keyid] -> Just $ MetaURI (hexToHash keyid) Nothing "" key fname
+								otherwise -> Nothing
+						otherwise ->  Nothing
 			else Nothing
 
 -- this is for constructing pairlists from maybes

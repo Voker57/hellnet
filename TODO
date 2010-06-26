@@ -4,9 +4,7 @@ Easy & fun (but i'm probably doing it right now)
 
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Replace maybe's w/cases
- * Add option to hell-dir to check hashes
- * Add option to it to force reinserting
- * Add more comments to meta methods and such
+ * Add jpath to h-m edit
 
 Boring
 
@@ -16,6 +14,9 @@ Boring
  * Sizes!
  * Meta links instead of current crap
  * Meta pprinting
+ * Add option to hell-dir to check hashes
+ * Add option to it to force reinserting
+ * Add more comments to meta methods and such
 
 Non-trivial
 
