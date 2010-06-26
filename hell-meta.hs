@@ -76,8 +76,8 @@ main = do
 	keyAliases <- getKeyAliases
 	let (optz, args, errs) = getOpt Permute options argz
 	let preOpts = processOptions defaultOptions optz
-	let (args', opts) = case (atMay args 1, parseHellnetURI (args !! 1)) of
-		(Just _, Just (MetaURI keyid mnameM mpath encKey _)) -> do
+	let (args', opts) = case (length args > 1, parseHellnetURI (args !! 1)) of
+		(True, Just (MetaURI keyid mnameM mpath encKey _)) -> do
 			let
 				namepath =	case (mnameM, mpath) of
 					(Just mname, []) -> [mname]
