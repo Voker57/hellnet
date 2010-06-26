@@ -182,7 +182,20 @@ getIgnores dir = do
 main = do
 	argz <- getArgs
 	let (optz, args, errs) = getOpt Permute options argz
-	let opts = processOptions defaultOptions optz
+	let preOpts = processOptions defaultOptions optz
+	print args
+	let (args', opts) = case (length args > 2, parseHellnetURI (args !! 2)) of
+		(True, Just (MetaURI keyid mnameM mpath encKey _)) -> do
+			let
+				namepath =	case (mnameM, mpath) of
+					(Just mname, []) -> [mname]
+					(Just mname, mp) -> [mname, mp]
+					otherwise -> [];
+				opts' = case encKey of
+					Just k -> preOpts {encryptMeta = True, metaEncKey = Just k}
+					otherwise -> preOpts
+					in (take 2 args ++ hashToHex keyid : namepath, opts')
+		otherwise -> (args, preOpts)
 	theKey <- if encrypt opts then
 		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
 		else
@@ -193,7 +206,7 @@ main = do
 		return Nothing
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
 	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
-	case args of
+	case args' of
 		["pull", dirName, metaKey, mName] -> do
 			keyid <- resolveKeyName metaKey
 			ignores <- getIgnores dirName
