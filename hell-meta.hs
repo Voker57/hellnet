@@ -30,11 +30,14 @@ import Hellnet.URI
 import Hellnet.Utils
 import Safe
 import System.Console.GetOpt
+import System.Directory
 import System.Environment
 import System.Exit
 import System.IO
 import System.Cmd
 import Text.HJson as JSON
+import Text.HJson.Pretty as PrettyJSON
+import Text.JSON.JPath
 import Text.Printf
 
 data Opts = Opts {
@@ -42,7 +45,8 @@ data Opts = Opts {
 	encKey :: Maybe Key,
 	updateMeta :: Bool,
 	encryptMeta :: Bool,
-	metaEncKey :: Maybe Key
+	metaEncKey :: Maybe Key,
+	prettyPrint :: Maybe String
 	}
 
 options :: [OptDescr (Opts -> Opts)]
@@ -52,7 +56,9 @@ options = [
 	Option ['e'] ["encrypt"]
 		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
 	Option ['u'] ["update-meta"]
-		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval"
+		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval",
+	Option ['p'] ["pretty-print"]
+		(OptArg (\s o -> o {prettyPrint = Just (fromMaybe "\t" s)}) "indenter") "Pretty-print JSON (if using JPath only). Optional argument is indenter, default is tab."
 	]
 
 defaultOptions = Opts {
@@ -60,7 +66,8 @@ defaultOptions = Opts {
 	encKey = Nothing,
 	updateMeta = False,
 	encryptMeta = False,
-	metaEncKey = Nothing
+	metaEncKey = Nothing,
+	prettyPrint = Nothing
 	}
 
 fetchMetaPrintResult :: KeyID -> String -> IO ()
@@ -96,8 +103,20 @@ main = do
 		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
 		else
 		return Nothing
+	let jsonPrinter = maybe (JSON.toString) (PrettyJSON.toString) $ prettyPrint opts
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
 	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
+	let invokeEditor bs = do
+		(fP, hdl) <- openTempFile "/tmp" "hellnetmeta"
+		BSL.hPut hdl bs
+		hClose hdl
+		returnCode <- rawSystem "editor" [fP]
+		case returnCode of
+			ExitFailure i -> return $ Left i
+			ExitSuccess -> do
+				dat <- BSL.readFile fP
+				removeFile fP
+				return $ Right dat
 	case args' of
 		["update", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
@@ -113,7 +132,7 @@ main = do
 			vs <- findMetaValue theMetaKey keyid mname mpath
 			case vs of
 				Nothing -> error "Meta not found"
-				Just a -> mapM_ (putStrLn . JSON.toString) $ a
+				Just a -> mapM_ (putStrLn . jsonPrinter) $ a
 		["get", keyidHex, mname] -> do
 			ensureSuppliedMetaKey
 			keyid <- resolveKeyName keyidHex
@@ -130,6 +149,35 @@ main = do
 			keyid <- resolveKeyName keyidHex
 			vs <- getMetaNames keyid
 			mapM_ (putStrLn) vs
+		["edit", keyidHex, mname, mpath] -> do
+			keyid <- resolveKeyName keyidHex
+			when (updateMeta opts) (fetchMeta keyid mname >> return ())
+			v <- getMeta keyid mname
+			case v of
+				Nothing -> error "Meta not found"
+				Just meta -> do
+					cont <- findMetaContent' theMetaKey meta
+					case cont of
+						Nothing -> error "Meta content not found"
+						Just cs -> do
+							let js = either (error) (id) $ JSON.fromString $ BUL.toString cs
+							let toEdits = jPath mpath js
+							case toEdits of
+								[toEdit] -> do
+									modifiedE <- invokeEditor $ BUL.fromString $ jsonPrinter toEdit
+									case modifiedE of
+										Left i -> error $ "Editor failed with status " ++ show i
+										Right modifiedJsonPartB -> do
+											let modifiedJsonPart = either (error "Couldn't parse JSON") (id) $ JSON.fromString $ BUL.toString $ modifiedJsonPartB
+											let modifiedJson = jPathModify mpath (const modifiedJsonPart) js
+											uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ modifiedJson)
+											newmetaM <- regenMeta $ meta {contentURI = uri}
+											case newmetaM of
+												Nothing -> error "Failed to re-sign meta"
+												Just newmeta -> do
+													storeMeta newmeta
+													ensureSuppliedMetaKey
+								otherwise -> error $ "JPath returned " ++ show (length toEdits) ++ " results"
 		["edit", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
@@ -141,14 +189,10 @@ main = do
 					case cont of
 						Nothing -> error "Meta content not found"
 						Just cs -> do
-							(fP, hdl) <- openTempFile "/tmp" "hellnetmeta"
-							BSL.hPut hdl cs
-							hClose hdl
-							returnCode <- rawSystem "editor" [fP]
-							case returnCode of
-								ExitFailure i -> error $ "editor failed with code: " ++ show i
-								ExitSuccess -> do
-									modified <- BSL.readFile fP
+							modifiedE <- invokeEditor cs
+							case modifiedE of
+								Left i -> error $ "Editor failed with status " ++ show i
+								Right modified -> do
 									uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ modified)
 									newmetaM <- regenMeta $ meta {contentURI = uri}
 									case newmetaM of
