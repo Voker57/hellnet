@@ -10,11 +10,14 @@ Easy & fun (but i'm probably doing it right now)
 Boring
 
  * Move everyting to Error data type
+   And fuck with exceptions
  * Rework URI parsing so it's possible to use node as authority (hellchunk: scheme, etc)
+   ex: hellchunk:abcdef instead of hell://chunk/abcdef
  * "Hashed" schema
+   hell://hash/abcadef23455245... that's in fact hell://chunk/dfdg33d3r/?size=4567
+   Hash should drastically change with change in its contents. Simplest approach: insert chunk with real URI and give its hash. Best approach: use something like XXTEA to encode content without need to go online for decrypting
  * Sizes!
- * Meta links instead of current crap
- * Meta pprinting
+   Add "size" field to URIs and check it. Maybe
  * Add option to hell-dir to check hashes
  * Add option to it to force reinserting
  * Add more comments to meta methods and such
