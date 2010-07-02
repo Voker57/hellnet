@@ -129,7 +129,7 @@ main = do
 			ensureSuppliedMetaKey
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
-			vs <- findMetaValue theMetaKey keyid mname mpath
+			vs <- findMetaContentByName theMetaKey keyid mname mpath
 			case vs of
 				Nothing -> error "Meta not found"
 				Just a -> mapM_ (putStrLn . jsonPrinter) $ a
@@ -153,71 +153,50 @@ main = do
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			v <- getMeta keyid mname
+			let modifier js = do
+				modifiedE <- invokeEditor $ BUL.fromString $ jsonPrinter js
+				case modifiedE of
+					Left i -> error $ "Editor failed with status " ++ show i
+					Right modifiedJsonPartB -> do
+						let modifiedJson = either (error "Couldn't parse JSON") (id) $ JSON.fromString $ BUL.toString $ modifiedJsonPartB
+						return $ Just $ modifiedJson
 			case v of
-				Nothing -> error "Meta not found"
 				Just meta -> do
-					cont <- findMetaContent' theMetaKey meta
-					case cont of
-						Nothing -> error "Meta content not found"
-						Just cs -> do
-							let js = either (error) (id) $ JSON.fromString $ BUL.toString cs
-							let toEdits = jPath mpath js
-							case toEdits of
-								[toEdit] -> do
-									modifiedE <- invokeEditor $ BUL.fromString $ jsonPrinter toEdit
-									case modifiedE of
-										Left i -> error $ "Editor failed with status " ++ show i
-										Right modifiedJsonPartB -> do
-											let modifiedJsonPart = either (error "Couldn't parse JSON") (id) $ JSON.fromString $ BUL.toString $ modifiedJsonPartB
-											let modifiedJson = jPathModify mpath (const modifiedJsonPart) js
-											uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ BUL.fromString $ JSON.toString $ modifiedJson)
-											newmetaM <- regenMeta $ meta {contentURI = uri}
-											case newmetaM of
-												Nothing -> error "Failed to re-sign meta"
-												Just newmeta -> do
-													storeMeta newmeta
-													ensureSuppliedMetaKey
-								otherwise -> error $ "JPath returned " ++ show (length toEdits) ++ " results"
+					result <- modifyMetaContent theKey meta mpath theMetaKey modifier
+					if result then
+						ensureSuppliedMetaKey
+						else
+						fail "Failed to modify meta."
 		["edit", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			v <- getMeta keyid mname
+			let modifier bs = do
+				modifiedE <- invokeEditor bs
+				case modifiedE of
+					Left i -> error $ "Editor failed with status " ++ show i
+					Right modifiedBS -> return $ Just modifiedBS
 			case v of
-				Nothing -> error "Meta not found"
 				Just meta -> do
-					cont <- findMetaContent' theMetaKey meta
-					case cont of
-						Nothing -> error "Meta content not found"
-						Just cs -> do
-							modifiedE <- invokeEditor cs
-							case modifiedE of
-								Left i -> error $ "Editor failed with status " ++ show i
-								Right modified -> do
-									uri <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ modified)
-									newmetaM <- regenMeta $ meta {contentURI = uri}
-									case newmetaM of
-										Nothing -> error "Failed to re-sign meta"
-										Just newmeta -> do
-											storeMeta newmeta
-											ensureSuppliedMetaKey
+					result <- modifyMetaContent' theKey meta theMetaKey modifier
+					if result then
+						ensureSuppliedMetaKey
+						else
+						fail "Failed to modify meta."
 		["replace", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
 			when (updateMeta opts) (fetchMeta keyid mname >> return ())
 			contentV <- BSL.getContents
 			contentURIV <- insertData theKey (maybe (id) (encryptSym) theMetaKey $ contentV)
-			newMetaM <- regenMeta Meta {
-				contentURI = contentURIV,
+			let meta = emptyMeta {
 				keyID = keyid,
-				timestamp = 0,
-				message = Nothing,
-				signature = Nothing,
 				metaName = mname
 				}
-			case newMetaM of
-				Nothing -> error "Failed to sign meta"
-				Just newMeta -> do
-					storeMeta newMeta
-					announceMetaKey
+			result <- modifyMetaContent' theKey meta theMetaKey (const $ return $ Just $ contentV)
+			if result then
+				announceMetaKey
+				else
+				error "Failed to replace meta"
 		["genkey"] -> do
 			putStrLn "Generating keys..."
 			keyID <- generateKeyPair

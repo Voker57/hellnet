@@ -12,6 +12,7 @@ import           Hellnet.Network
 import           Hellnet.Storage
 import           Hellnet.URI
 import           Hellnet.Utils
+import           Safe
 import           System.Console.GetOpt
 import           System.Environment                (getArgs)
 import           System.FilePath
@@ -213,10 +214,8 @@ main = do
 			when (updateMeta opts) (fetchMeta keyid mName >> return ())
 			ensureSuppliedMetaKey
 			putStrLn "Synchronizing local tree with remote"
-			contM <- findMetaContentByName theMetaKey keyid mName
-			let remoteTree = case contM of
-				Just cont -> fromMaybe (error "Couldn't load file tree") $ fromJson cont
-				Nothing -> error "Couldn't parse JSON"
+			contM <- findMetaContentByName theMetaKey keyid mName ""
+			let remoteTree = fromMaybe (error "Couldn't parse tree") $ fromJson $ fromMaybe (error "Couldn't get content") $ headMay $ fromMaybe (error "Couldn't get content") $ contM 
 			putStrLn "Reading directory tree..."
 			dirTree <- Tree.readDirectoryWith (const $ return ()) dirName
 			currentTreeM <- convertTree [dirName] $ Tree.free dirTree
@@ -234,9 +233,12 @@ main = do
 			when (isJust metaM) (ensureSuppliedMetaKey)
 			when (isNothing metaM) $ putStrLn "Warning: Meta not found. Creating new one."
 			let meta = fromMaybe (emptyMeta {keyID = keyid, metaName = mName}) metaM
-			contM <- findMetaContent theMetaKey meta
-			let remoteTree = (fromMaybe (Nothing) $ fmap (fromJson) contM) :: Maybe FileTree
-			
+			contM <- findMetaContent theMetaKey meta ""
+			let remoteTree = case contM of
+				Nothing -> Nothing
+				Just [] -> Nothing
+				Just (js:_) -> fromJson js
+		
 			putStrLn "Reading directory tree..."
 			dirTree <- Tree.readDirectoryWith (const $ return ()) dirName
 			currentTreeM <- convertTree [] $ Tree.free dirTree

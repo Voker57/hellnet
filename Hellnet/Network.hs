@@ -32,11 +32,12 @@ module Hellnet.Network (
 	, findMetaContent'
 	, findMetaContentByName
 	, findMetaContentByName'
-	, findMetaValue
 	, findURI
 	, getContactLog
 	, getNodesList
 	, handshakeWithNode
+	, modifyMetaContent
+	, modifyMetaContent'
 	, queryNodeGet
 	, updateNodeContactTime
 	, verifyMeta
@@ -300,48 +301,76 @@ fetchMetaFromNode node keyId mName = do
 		return meta
 		) result
 
-findMetaContent :: Maybe Key -> Meta -> IO (Maybe Json)
-findMetaContent encKey m = do
-	cont <- findMetaContent' encKey m
-	return $ case cont of
-		Nothing -> Nothing
-		Just s -> case JSON.fromString $ BUL.toString s of
-			Left _ -> Nothing
-			Right js -> Just js
-
-findMetaContent' :: Maybe Key -> Meta -> IO (Maybe BSL.ByteString)
-findMetaContent' encKey m = do
-	cont <- findURI (contentURI m)
-	return $ fmap (maybe (id) (decryptSym) encKey) cont
-
-findMetaContentByName :: Maybe Key -> KeyID -> String -> IO (Maybe Json)
-findMetaContentByName encKey kid mname = do
-	metaM <- getMeta kid mname
-	case metaM of
-		Nothing -> return Nothing
-		Just meta -> findMetaContent encKey meta
-
-findMetaContentByName' :: Maybe Key -> KeyID -> String -> IO (Maybe BSL.ByteString)
-findMetaContentByName' encKey kid mname = do
-	metaM <- getMeta kid mname
-	case metaM of
-		Nothing -> return Nothing
-		Just meta -> findMetaContent' encKey meta
-
-findMetaValue :: (JPath.QueryLike a) => Maybe Key
-	-> KeyID -- ^ public key ID
-	-> String -- ^ Meta name
+findMetaContent :: (JPath.QueryLike a) => Maybe Key
+	-> Meta
 	-> a -- ^ Meta JPath
 	-> IO (Maybe [Json]) -- ^ Results or Nothing if meta was not found
-findMetaValue encKey keyId mName mPath = do
-	meta <- getMeta keyId mName
-	case meta of
+findMetaContent metaKey meta mPath = do
+	contBS <- findMetaContent' metaKey meta
+	case contBS of
 		Nothing -> return Nothing
-		Just m -> do
-			cont <- findMetaContent encKey m
-			case cont of
-				Nothing -> return Nothing
-				Just j -> return $ Just $ jPath mPath j
+		Just cont -> return $ case JSON.fromString $ BUL.toString cont of
+			Left _ -> Nothing
+			Right js -> Just $ jPath mPath js
+
+findMetaContent' :: Maybe Key -> Meta -> IO (Maybe BSL.ByteString)
+findMetaContent' metaKey m = do
+	cont <- findURI (contentURI m)
+	return $ fmap (maybe (id) (decryptSym) metaKey) cont
+
+
+findMetaContentByName :: (QueryLike a) => Maybe Key -> KeyID -> String -> a -> IO (Maybe [Json])
+findMetaContentByName metaKey kid mname mpath = do
+	metaM <- getMeta kid mname
+	case metaM of
+		Nothing -> return Nothing
+		Just meta -> findMetaContent metaKey meta mpath
+
+findMetaContentByName' :: Maybe Key -> KeyID -> String -> IO (Maybe BSL.ByteString)
+findMetaContentByName' metaKey kid mname = do
+	metaM <- getMeta kid mname
+	case metaM of
+		Nothing -> return Nothing
+		Just meta -> findMetaContent' metaKey meta
+
+modifyMetaContent' :: Maybe Key -- ^ Meta contents' key
+	-> Meta
+	-> Maybe Key -- ^ Meta key
+	-> (BUL.ByteString -> IO (Maybe BUL.ByteString))
+	-> IO Bool -- ^ Whether meta was successfully modified
+modifyMetaContent' encKey meta metaKey modifier = do
+	contM <- findMetaContent' encKey meta
+	case contM of
+		Nothing -> return False
+		Just cont -> do
+			modifiedContentM <- modifier cont
+			case modifiedContentM of
+				Just modifiedContent -> do
+					uri <- insertData encKey (maybe (id) (encryptSym) metaKey modifiedContent)
+					newmetaM <- regenMeta $ meta {contentURI = uri}
+					case newmetaM of
+						Nothing -> return False
+						Just newmeta -> do
+							storeMeta newmeta
+							return True
+				Nothing -> return False
+
+modifyMetaContent :: (JPath.QueryLike a) => Maybe Key -- ^ Meta contents' key
+	-> Meta
+	-> a -- ^ Meta JPath
+	-> Maybe Key -- ^ Meta key
+	-> (Json -> IO (Maybe Json))
+	-> IO Bool -- ^ Whether meta was successfully modified
+modifyMetaContent encKey meta mpath metaKey modifier = do
+	let bsModifier bs = case JSON.fromString $ BUL.toString bs of
+		Left err -> return Nothing
+		Right js -> do
+			case jPath mpath js of
+				[jsPart] -> do
+					jsPart' <- modifier jsPart
+					return $ fmap (\p -> BUL.fromString $ JSON.toString $ jPathModify mpath (const p) js) jsPart'
+				otherwise -> return Nothing
+	modifyMetaContent' encKey meta metaKey bsModifier
 
 fetchNodeListFromNode :: Node -> IO [Node]
 fetchNodeListFromNode node = do
