@@ -187,14 +187,6 @@ getMetaNames keyid = do
 	res <- getDirectory' path
 	return $ fromMaybe [] res
 
--- | What the fuck is that?
-modifyMeta :: KeyID -- ^ public key ID
-	-> String -- ^ Meta name
-	-> String -- ^ Meta JPath
-	-> (Json -> Json) -- ^ JSON modifier function
-	-> Bool -- Whether meta was successfully modified
-modifyMeta = undefined
-
 -- | Stores meta in storage
 storeMeta :: Meta -> IO ()
 storeMeta m = storeFile' ["meta", hashToHex (keyID m), metaName m] $ Meta.toByteString m
