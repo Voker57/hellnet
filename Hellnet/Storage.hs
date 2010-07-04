@@ -85,6 +85,7 @@ hashAndAppend encKey a b
 		bHash <- insertChunk encKey b
 		return (BSL.append a $ BSL.pack bHash)
 
+-- | Inserts a file into storage
 insertFileContents :: Maybe Key -> BSL.ByteString -> IO Hash
 insertFileContents encKey bs = do
 	let chunks = splitBslFor chunkSize bs
@@ -95,6 +96,7 @@ insertFileContents encKey bs = do
 	fileLinkHash <- insertChunk encKey fileLinkHead
 	return fileLinkHash
 
+-- | Inserts a chunk into storage. Chunk must be chunkSize or less.
 insertChunk :: Maybe Key -> Chunk -> IO Hash
 insertChunk encKey ch = do
 	let chunk = maybe (ch) ((flip encryptSym) ch) encKey
@@ -118,12 +120,14 @@ getChunk key hsh = do
 				Just loc -> getExternalChunk loc
 	return $ fmap (\conts -> maybe (conts) (\k -> decryptSym k conts) key) chunk
 
+-- | Converts storage path to full system path
 toFullPath :: FilePath -> IO FilePath
 toFullPath fpath = do
 	dirEnv <- safeGetEnv "HELLNET_HOME"
 	dir <- maybe (getAppUserDataDirectory "hellnet") (return) dirEnv
 	return (joinPath [dir,fpath])
 
+-- | Stores file using given path in storage
 storeFile :: FilePath -> BSL.ByteString -> IO ()
 storeFile fpath dat = do
 	fullPath <- toFullPath fpath
@@ -137,9 +141,11 @@ storeFile fpath dat = do
 		removeFile tmpf
 	catch (renameFile tmpf fullPath) (\e -> copyMove)
 
+-- | Convenience version of storeFile that joins path by itself
 storeFile' :: [String] -> BSL.ByteString -> IO ()
 storeFile' fs = storeFile (joinPath fs)
 
+-- | Gets file from storage path
 getFile :: FilePath -> IO (Maybe BSL.ByteString)
 getFile fpath = do
 	fullPath <- toFullPath fpath
@@ -147,34 +153,41 @@ getFile fpath = do
 		conts <- BSL.readFile fullPath
 		return (Just conts)) (const (return Nothing))
 
+-- | See storeFile'
 getFile' :: [String] -> IO (Maybe BSL.ByteString)
 getFile' fs = getFile (joinPath fs)
 
+-- | Removes chunk from storage
 purgeChunk :: Hash -> IO ()
 purgeChunk hsh = do
 	let hexHsh = hashToHex hsh
 	fpath <- toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
 	removeFile fpath
 
+-- | Converts hash to chunk path (first byte as directory)
 hashToPath :: Hash -> IO FilePath
 hashToPath hsh = let hexHsh = hashToHex hsh in toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
 
+-- | Whether chunk with that hash is stored already
 isStored :: Hash -> IO Bool
 isStored hsh = do
 	c <- getChunk Nothing hsh
 	return $ isJust c
 
+-- | Gets meta from storage
 getMeta :: KeyID -> String -> IO (Maybe Meta)
 getMeta keyId mName = do
 	mFile <- getFile' ["meta", hashToHex keyId, mName]
 	return $ maybe (Nothing) (Meta.fromByteString) mFile
 
+-- | Gets all meta names for given key
 getMetaNames :: KeyID -> IO [String]
 getMetaNames keyid = do
 	let path = ["meta", hashToHex keyid]
 	res <- getDirectory' path
 	return $ fromMaybe [] res
 
+-- | What the fuck is that?
 modifyMeta :: KeyID -- ^ public key ID
 	-> String -- ^ Meta name
 	-> String -- ^ Meta JPath
@@ -182,9 +195,11 @@ modifyMeta :: KeyID -- ^ public key ID
 	-> Bool -- Whether meta was successfully modified
 modifyMeta = undefined
 
+-- | Stores meta in storage
 storeMeta :: Meta -> IO ()
 storeMeta m = storeFile' ["meta", hashToHex (keyID m), metaName m] $ Meta.toByteString m
 
+-- | Returns list of all directory entries
 getDirectory :: FilePath -> IO (Maybe [FilePath])
 getDirectory fpath = do
 	fullPath <- toFullPath fpath
@@ -195,9 +210,11 @@ getDirectory fpath = do
 		else
 		return Nothing
 
+-- | See storeFile'
 getDirectory' :: [FilePath] -> IO (Maybe [FilePath])
 getDirectory' = getDirectory . joinPath
 
+-- | Inserts data in optimal form (chunk or file), returns URI
 insertData :: Maybe Key -> BSL.ByteString -> IO HellnetURI
 insertData encKey dat = if BSL.null $ BSL.drop (256 * 1024) dat then do
 	hsh <- insertChunk encKey dat
@@ -206,6 +223,7 @@ insertData encKey dat = if BSL.null $ BSL.drop (256 * 1024) dat then do
 	hsh <- insertFileContents encKey dat
 	return $ FileURI hsh encKey Nothing
 
+-- | Stores private ky in storage
 storePrivateKey :: KeyID -> PrivateKey -> IO ()
 storePrivateKey kid pKey = do
 	let bs = BUL.fromString $ JSON.toString $ toJson pKey
@@ -213,6 +231,7 @@ storePrivateKey kid pKey = do
 	fPath <- toFullPath $ joinPath ["privatekeys", hashToHex kid]
 	setFileMode fPath $ unionFileModes ownerWriteMode ownerReadMode
 
+-- | Generates key pair and stores'em
 generateKeyPair :: IO KeyID
 generateKeyPair = do
 	g <- newStdGen
@@ -221,6 +240,7 @@ generateKeyPair = do
 	storePrivateKey hsh priv
 	return hsh
 
+-- | Gets private key from storage
 getPrivateKey :: KeyID -> IO (Maybe PrivateKey)
 getPrivateKey kid = do
 	fil <- getFile' ["privatekeys", hashToHex kid]
@@ -228,6 +248,7 @@ getPrivateKey kid = do
 		Nothing -> Nothing
 		Just k -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString k
 
+-- | Regenerates meta message and signature if private key is available
 regenMeta :: Meta -> IO (Maybe Meta)
 regenMeta meta = do
 	pKeyM <- getPrivateKey (keyID meta)
@@ -248,6 +269,7 @@ instance Jsonable (Map.Map String KeyID) where
 		unStringifyValue _ = ""
 	fromJson _ = Nothing
 
+-- | Returns all alias
 getKeyAliases :: IO (Map.Map String KeyID)
 getKeyAliases = do
 	aliasesFileM <- getFile "keyaliases"
@@ -257,9 +279,11 @@ getKeyAliases = do
 			Left _ -> Map.empty
 			Right j -> fromMaybe (Map.empty) $ fromJson j
 
+-- | Stores alias' map
 storeKeyAliases :: Map.Map String KeyID -> IO ()
 storeKeyAliases m = storeFile "keyaliases" $ BUL.fromString $ JSON.toString $ toJson m
 
+-- | Resolves an alias
 resolveKeyName :: String -> IO KeyID
 resolveKeyName name = do
 	aliases <- getKeyAliases
@@ -294,6 +318,7 @@ getIndex hsh = do
 			Left _ -> Nothing
 			Right js -> fromJson js
 
+-- | Gets chunk from external location
 getExternalChunk :: ChunkLocation -> IO (Maybe Chunk)
 getExternalChunk (FileLocation path offset encKey) = do
 	exists <- doesFileExist path
@@ -305,6 +330,7 @@ getExternalChunk (FileLocation path offset encKey) = do
 		else
 		return Nothing
 
+-- | Deletes meta
 deleteMeta :: KeyID -> String -> IO Bool
 deleteMeta kid mname = do
 	fpath <- toFullPath $ joinPath ["meta", hashToHex kid, mname]

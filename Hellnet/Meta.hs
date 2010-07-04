@@ -1,4 +1,4 @@
-module Hellnet.Meta (Meta(..), fromByteString, toByteString, emptyMeta) where
+module Hellnet.Meta (Meta(..), fromByteString, toByteString, emptyMeta, metaStub) where
 
 import Codec.Crypto.RSA
 import qualified Data.ByteString.Lazy as BSL
@@ -33,6 +33,9 @@ emptyMeta = Meta {
 	, message = Nothing -- ^ JSON as ByteString
 	, signature = Nothing -- ^ Digital signature
 }
+
+-- | Shortcut
+metaStub mname kid = emptyMeta { metaName = mname, keyID = kid }
 
 instance Jsonable Meta where
 	fromJson v = let

@@ -263,6 +263,7 @@ verifyMeta meta
 				) $ JSON.fromString str
 			) keyChunk
 
+-- | Fetches meta from network into storage, return success
 fetchMeta :: KeyID -> String -> IO Bool
 fetchMeta keyId mName = do
 	nodes <- getNodesList >>= shuffle
@@ -301,6 +302,8 @@ fetchMetaFromNode node keyId mName = do
 		return meta
 		) result
 
+-- | Locates information by given JPath in given meta's content
+-- | Works only on meta that contains JSON
 findMetaContent :: (JPath.QueryLike a) => Maybe Key
 	-> Meta
 	-> a -- ^ Meta JPath
@@ -313,12 +316,13 @@ findMetaContent metaKey meta mPath = do
 			Left _ -> Nothing
 			Right js -> Just $ jPath mPath js
 
+-- | Locates given meta content
 findMetaContent' :: Maybe Key -> Meta -> IO (Maybe BSL.ByteString)
 findMetaContent' metaKey m = do
 	cont <- findURI (contentURI m)
 	return $ fmap (maybe (id) (decryptSym) metaKey) cont
 
-
+-- | Same as findMetaContent, byt grabs meta from storage first
 findMetaContentByName :: (QueryLike a) => Maybe Key -> KeyID -> String -> a -> IO (Maybe [Json])
 findMetaContentByName metaKey kid mname mpath = do
 	metaM <- getMeta kid mname
@@ -326,6 +330,7 @@ findMetaContentByName metaKey kid mname mpath = do
 		Nothing -> return Nothing
 		Just meta -> findMetaContent metaKey meta mpath
 
+-- | Same as findMetaContent', byt grabs meta from storage first
 findMetaContentByName' :: Maybe Key -> KeyID -> String -> IO (Maybe BSL.ByteString)
 findMetaContentByName' metaKey kid mname = do
 	metaM <- getMeta kid mname
@@ -333,6 +338,7 @@ findMetaContentByName' metaKey kid mname = do
 		Nothing -> return Nothing
 		Just meta -> findMetaContent' metaKey meta
 
+-- |  Modifies meta content using given IO action and tries to re-sign it
 modifyMetaContent' :: Maybe Key -- ^ Meta contents' key
 	-> Meta
 	-> Maybe Key -- ^ Meta key
@@ -355,6 +361,8 @@ modifyMetaContent' encKey meta metaKey modifier = do
 							return True
 				Nothing -> return False
 
+-- |  Modifies meta content under JPath using given IO action and tries to re-sign it
+-- | Works only on JSON-containing meta
 modifyMetaContent :: (JPath.QueryLike a) => Maybe Key -- ^ Meta contents' key
 	-> Meta
 	-> a -- ^ Meta JPath
@@ -377,6 +385,7 @@ fetchNodeListFromNode node = do
 	results <- queryNodeGet "/nodelist" node
 	return (fromMaybe [] (maybe Nothing (readMay . BUL.toString) results))
 
+-- | Tries to download given URI
 findURI :: HellnetURI -> IO (Maybe BSL.ByteString)
 findURI uri = case uri of
 	(ChunkURI hsh key fname) -> do
@@ -386,6 +395,7 @@ findURI uri = case uri of
 		return $ either (const Nothing) (Just) fil
 	otherwise -> return Nothing
 
+-- | Tries to find public key in network by its ID
 findKey :: KeyID -> IO (Maybe PublicKey)
 findKey kid = do
 	ch <- findChunk Nothing kid
@@ -393,6 +403,7 @@ findKey kid = do
 		Nothing -> Nothing
 		Just chunk -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString $ chunk
 
+-- | Tries to find meta in network
 findMeta :: KeyID -> String -> IO (Maybe Meta)
 findMeta kid name = do
 	fetchMeta kid name

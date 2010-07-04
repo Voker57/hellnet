@@ -173,5 +173,6 @@ breakLazySubstring pat src = search 0 src
 			| pat `BSL.isPrefixOf` s = (BSL.take n src,s)
 			| otherwise = search (n+1) (BSL.tail s)
 
+-- | Returns value of environment variable and does not flee in panic if it doesn't exist
 safeGetEnv :: String -> IO (Maybe String)
 safeGetEnv name = catch (getEnv name >>= (return . Just)) (\e -> if isDoesNotExistError e then return Nothing else ioError e)
