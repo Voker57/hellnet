@@ -5,7 +5,6 @@ Easy & fun (but i'm probably doing it right now)
  * Check for BS.pack/unpack and replace w/utf8-string calls, where applicable
  * Replace maybe's w/cases
  * Add jpath to h-m edit and replace
- * Do something with multi-levelled mess in h-meta, before it gets self-conscious and destroys the world
  * hell-fsck: check external chunks, metas...
 
 Boring
