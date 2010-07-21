@@ -54,6 +54,8 @@ options = [
 
 filterDots = return . filter (not . (`elem` [".", ".."]))
 
+nprintfn s = printf (concat ["\n", s, "\n"])
+
 checkHashesInDirectory opts d = do
 	putStr $ d ++ "..."
 	dfp <- (toFullPath $ "store" </> d)
@@ -66,12 +68,12 @@ checkChunk opts (d, c) = do
 	datM <- getFile fp
 	case datM of
 		Just dat -> if BSL.length dat > fromInteger chunkSize then do
-			putStrLn $ "\nChunk " ++ d ++ c ++" is too big, removing"
+			nprintfn "Chunk %s%s is too big, removing" d c
 			when (fixErrors opts) $ removeFile fp
 			else if Hellnet.Crypto.hash dat == hsh then
 				return ()
 				else do
-				putStrLn $ "\nHash mismatch in " ++ d ++ c ++ ", removing"
+				nprintfn "Hash mismatch in %s%s, removing" d c
 				when (fixErrors opts) $ removeFile fp
 		Nothing -> return ()
 
@@ -92,13 +94,13 @@ checkMapping opts (d, c) = do
 				case ch of
 					Just ch -> do
 						when (Hellnet.Crypto.hash ch /= hsh) $ do
-							putStrLn $ "\nHash mismatch in " ++ d ++ c ++ ", removing"
+							nprintfn "Hash mismatch in %s%s, removing" d c
 							when (fixErrors opts) $ removeFile fp
 					Nothing -> do
-						putStrLn $ "Failed to fetch external chunk " ++ d ++ c ++ ", removing"
+						nprintfn "Failed to fetch external chunk %s%s, removing" d c
 						when (fixErrors opts) $ removeFile fp
 			otherwise -> do
-				putStrLn $ "Failed to read external chunk reference " ++ d ++ c ++ ", removing"
+				nprintfn "Failed to read external chunk reference %s%s, removing" d c
 				when (fixErrors opts) $ removeFile fp
 		Nothing -> return ()
 
@@ -119,13 +121,13 @@ checkMetas opts (d, c) = do
 					case result of
 						Just True -> return ()
 						Just False -> do
-							printf "\nMeta %s/%s signature check failed, removing\n" d c
+							nprintfn "Meta %s/%s signature check failed, removing" d c
 							when (fixErrors opts) $ removeFile fp
 						Nothing -> do
-							printf "\nFailed to get key for %s, skipping\n" d
+							nprintfn "Failed to get key for %s, skipping" d
 							return ()
 				Nothing -> do
-					printf "\nCouldn't parse meta %s/%s, removing\n" d c
+					printf "Couldn't parse meta %s/%s, removing" d c
 					when (fixErrors opts) $ removeFile fp
 		Nothing -> return ()
 
