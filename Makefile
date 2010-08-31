@@ -1,6 +1,6 @@
-all: hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-talk hell-dir
+all: $(execs)
 lib = Hellnet.hs Hellnet/*.hs
-execs = hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-dir
+execs = hell-fsck hell-insert hell-get hell-nodes hell-serve hell-meta hell-dir hell-serve-meta
 $(execs): %: %.hs $(lib)
 	ghc --make -hide-package transformers -hide-package monads-tf -hide-package monads-fd $@
 clean:
