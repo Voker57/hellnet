@@ -70,4 +70,8 @@ main = do
 						)
 					return ()
 					) fil
+				Just u@(MetaURI _ _ _ _ fname) -> do
+					let filename = maybe "/dev/stdout" (id) fname
+					resultM <- findURI u
+					maybe (fail "Not found") (BSL.writeFile filename) resultM
 				otherwise -> fail "URI type not implemented yet"

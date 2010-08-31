@@ -15,6 +15,8 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
+{-# LANGUAGE RelaxedPolyRec #-}
+
 module Hellnet.Network (
 	addNode
 	, fetchChunk
@@ -388,11 +390,17 @@ fetchNodeListFromNode node = do
 -- | Tries to download given URI
 findURI :: HellnetURI -> IO (Maybe BSL.ByteString)
 findURI uri = case uri of
-	(ChunkURI hsh key fname) -> do
+	(ChunkURI hsh key _) -> do
 		findChunk key hsh
-	(FileURI hsh key fname) -> do
+	(FileURI hsh key _) -> do
 		fil <- findFile key hsh
 		return $ either (const Nothing) (Just) fil
+	(MetaURI hsh (Just mName) [] mKey _) -> do
+		-- Fetch raw meta data
+		findMetaContentByName' mKey hsh mName
+	(MetaURI hsh (Just mName) mPath mKey _) -> do
+		-- Fetch raw meta data
+		findMetaContentByName mKey hsh mName mPath >>= return . fmap (BUL.fromString . JSON.toString . JSON.JArray)
 	otherwise -> return Nothing
 
 -- | Tries to find public key in network by its ID
