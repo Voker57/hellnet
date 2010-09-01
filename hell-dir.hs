@@ -32,7 +32,8 @@ data Opts = Opts {
 	encryptMeta :: Bool,
 	metaEncKey :: Maybe Key,
 	verbose :: Bool,
-	dryRun :: Bool
+	dryRun :: Bool,
+	indexChunks :: Bool
 	}
 
 options :: [OptDescr (Opts -> Opts)]
@@ -46,7 +47,9 @@ options = [
 	Option ['v'] ["verbose"]
 		(NoArg (\o -> o {verbose = True})) "Be verbose",
 	Option ['d'] ["dry-run"]
-		(NoArg (\o -> o {dryRun = True})) "Do not actually touch anything"
+		(NoArg (\o -> o {dryRun = True})) "Do not actually touch anything",
+	Option ['i'] ["index"]
+		(NoArg (\o -> o {indexChunks = True})) "Index files instead of inserting"
 	]
 
 defaultOptions = Opts {
@@ -56,7 +59,8 @@ defaultOptions = Opts {
 	encryptMeta = False,
 	metaEncKey = Nothing,
 	verbose = False,
-	dryRun = False
+	dryRun = False,
+	indexChunks = False
 	}
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
@@ -146,7 +150,10 @@ pushTreeWalker ignores opts cpath (File lmtime link) (Just (File rmtime rlink)) 
 		pushTreeWalker ignores opts cpath (File lmtime link) Nothing
 pushTreeWalker ignores opts cpath (File lmtime _) _ = do
 	printf "Updating file %s\n" $ joinPath cpath
-	url <- insertData Nothing =<< BSL.readFile (joinPath cpath)
+	url <- if indexChunks opts then
+		indexData Nothing (joinPath cpath)
+		else
+		insertData Nothing =<< BSL.readFile (joinPath cpath)
 	return (File lmtime $ show url)
 
 getIgnores dir = do

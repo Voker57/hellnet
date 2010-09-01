@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Files (insertFile, downloadFile, indexFile) where
+module Hellnet.Files (insertFile, downloadFile, indexFile, indexData) where
 
 import Codec.Utils
 import Data.Foldable (foldrM)
@@ -28,7 +28,9 @@ import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import System.Directory
+import System.FilePath
 import System.IO
+import System.Posix
 
 insertFile :: Maybe Key -> FilePath -> IO Hash
 insertFile encKey fname = do
@@ -56,6 +58,16 @@ indexFile encKey fname = do
 	fileLinkHash <- insertChunk encKey fileLinkHead
 	return fileLinkHash
 
+indexData :: Maybe Key -> FilePath -> IO HellnetURI
+indexData encKey fpath = do
+	fstatus <- getFileStatus fpath
+	if toInteger (fileSize fstatus) > chunkSize then do
+		hsh <- indexFile encKey fpath
+		return $ FileURI hsh encKey (Just $ snd $ splitFileName fpath)
+		else do
+		dat <- BSL.readFile fpath
+		hsh <- indexChunk encKey dat (FileLocation fpath 0 encKey)
+		return $ ChunkURI hsh encKey (Just $ snd $ splitFileName fpath)
 
 getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()
 getChunkAppendToFile encKey fname hsh = do
