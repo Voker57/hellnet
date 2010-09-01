@@ -15,6 +15,7 @@ library
   Hellnet.Crypto
   Hellnet.ExternalChunks
   Hellnet.Files
+  Hellnet.FileTree
   Hellnet.Utils
   Hellnet.Storage
   Hellnet.Meta
