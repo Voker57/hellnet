@@ -32,7 +32,7 @@ import System.Environment (getArgs)
 import System.FilePath
 import System.IO
 
-data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool, outOfStore :: Bool}
+data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool, indexOnly :: Bool}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
@@ -40,11 +40,11 @@ options = [
 		(OptArg (\s o -> o {encKey = maybe (Nothing) (Just . hexToHash) s, encrypt = True}) "key") "Encrypt (optionally with specified key)",
 	Option ['c'] ["chunk"]
 		(NoArg (\o -> o {chunk = True})) "Add file as single chunk (Only for files < 256 kB)",
-	Option ['o'] ["out-of-store"]
-		(NoArg (\o -> o {outOfStore = True})) "Do not insert chunks into store, but add them into chunks' map instead, so hell-serve would get them out of file directly. Much slower. Probably."
+	Option ['i'] ["index-only"]
+		(NoArg (\o -> o {indexOnly = True})) "Do not insert chunks into store, but add them into chunks' map instead, so hell-serve would get them out of file directly. Much slower. Probably."
 	]
 
-defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, outOfStore = False}
+defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, indexOnly = True}
 
 
 insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
@@ -91,12 +91,12 @@ main = do
 		else
 		return Nothing
 	if chunk optz then
-		if outOfStore optz then
+		if indexOnly optz then
 			mapM (indexChunkPrintHash theKey) argz
 			else
 			mapM (insertChunkPrintHash theKey) argz
 		else
-		if outOfStore optz then
+		if indexOnly optz then
 			mapM (indexFilePrintHash theKey) argz
 			else
 			mapM (insertFilePrintHash theKey) argz
