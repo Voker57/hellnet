@@ -22,7 +22,7 @@ library
   Hellnet.Network
   Hellnet.URI
   Hellnet.ArchdaemonModules
- Build-Depends: base >= 4.2 && < 5, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 3.0 && < 4.0, hjson >= 1.2 && < 2.0, safe >= 0.2, time, unix, parsec >= 3.0.0, random, process, utf8-string, RSA, uri >= 0.1.2
+ Build-Depends: base >= 4.2 && < 5, Crypto, bytestring, pretty, filepath, directory, haskell98, HTTP >= 4000, hjpath >= 3.0 && < 4.0, hjson >= 1.2 && < 2.0, safe >= 0.2, time, unix, parsec >= 3.0.0, random, process, utf8-string, RSA, uri >= 0.1.2, archdaemon
 Executable hell-insert
  Main-is: hell-insert.hs
  Build-Depends: base
@@ -40,9 +40,9 @@ Executable hell-fsck
 Executable hell-serve
  Main-is: hell-serve.hs
  Build-depends: Lucu >=0.7 && < 0.8, network, mtl, containers
-xecutable hell-serve-meta
+Executable hell-serve-meta
  Main-is: hell-serve-meta.hs
- Build-depends: Lucu >=0.7 && < 0.8, network, mtl, containers, archdaemon
+ Build-depends: Lucu >=0.7 && < 0.8, network, mtl, containers
 Executable hell-dir
  Main-is: hell-dir.hs
  Build-depends: directory-tree >= 0.1 && < 0.2, old-time, Glob
