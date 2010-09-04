@@ -1,7 +1,7 @@
 module Hellnet.ArchdaemonModules (metaModule) where
 
-import Network.HTTP.Archdaemon as Archdaemon
-import Network.HTTP.Archdaemon.Module as ArchdaemonModule
+import Archdaemon
+import Archdaemon.Module as ArchdaemonModule
 import Network.HTTP.Lucu
 import Text.HJson
 import Hellnet.FileTree
