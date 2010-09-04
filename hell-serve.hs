@@ -28,6 +28,8 @@ import Hellnet.Network
 import Hellnet.Utils
 import Network.HTTP.Lucu as Lucu
 import Network
+import System.FilePath
+import System.Directory
 import System.Environment
 
 handShakeOut = do
@@ -45,26 +47,22 @@ handShakeOut = do
 		else
 		setStatus NotAcceptable
 
-mappedChunksResponse hsh = do
-	chunkIndex <- liftIO $ getIndex hsh
-	case chunkIndex of
-		Nothing -> setStatus NotFound
-		Just loc -> do
-			chunkM <- liftIO $ getExternalChunk loc
-			case chunkM of
-				Nothing -> setStatus NotFound
-				Just chunk -> outputLBS chunk
-
-mappedChunksFallback ["chunks", fp, sp] = return $ Just $ ResourceDef {
-		resUsesNativeThread = False,
-		resIsGreedy = False,
-		resGet = Just $ mappedChunksResponse $ hexToHash (fp ++ sp),
-		resHead = Nothing,
-		resPost = Nothing,
-		resPut = Nothing,
-		resDelete = Nothing
-		}
-mappedChunksFallback _ = return Nothing
+chunksHandler = do
+	[fp, sp] <- getPathInfo
+	let hsh = hexToHash (fp ++ sp)
+	chunksPath <- liftIO $ toFullPath "store"
+	exists <- liftIO $ doesFileExist $ joinPath [chunksPath, fp, sp]
+	if exists then
+		handleStaticFile $ joinPath [chunksPath, fp, sp]
+		else do
+		chunkIndex <- liftIO $ getIndex hsh
+		case chunkIndex of
+			Nothing -> setStatus NotFound
+			Just loc -> do
+				chunkM <- liftIO $ getExternalChunk loc
+				case chunkM of
+					Nothing -> setStatus NotFound
+					Just chunk -> outputLBS chunk
 
 main = do
 	args <- getArgs
@@ -73,7 +71,6 @@ main = do
 		else
 		head args
 	let config = defaultConfig { cnfServerPort = port };
-	chunksPath <- toFullPath "store"
 	metaPath <- toFullPath "meta"
 	publicPath <- toFullPath "public.dsa"
 	nodelistPath <- toFullPath "nodelist"
@@ -95,8 +92,12 @@ main = do
 		resPut = Nothing,
 		resDelete = Nothing
 		}
+	let chunksRes = emptyResource {
+		resGet = Just $ chunksHandler,
+		resIsGreedy = True
+	}
 	let resources = mkResTree [
-		(["chunks"], staticDir chunksPath)
+		(["chunks"], chunksRes)
 		,(["meta"], staticDir metaPath)
 		,(["hello"], helloRes)
 		,(["handshake"], handShakeRes)
@@ -104,4 +105,4 @@ main = do
 		]
 	storeFile "serverport" (BUL.fromString $ show port)
 	putStrLn $ "Listening on port " ++ show port
-	runHttpd config resources [mappedChunksFallback]
+	runHttpd config resources []
