@@ -169,7 +169,6 @@ main = do
 	argz <- getArgs
 	let (optz, args, errs) = getOpt Permute options argz
 	let preOpts = processOptions defaultOptions optz
-	print args
 	let (args', opts) = case (length args > 2, parseHellnetURI (args !! 2)) of
 		(True, Just (MetaURI keyid mnameM mpath encKey _)) -> do
 			let
