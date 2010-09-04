@@ -66,7 +66,8 @@ indexData encKey fpath = do
 		return $ FileURI hsh encKey (Just $ snd $ splitFileName fpath)
 		else do
 		dat <- BSL.readFile fpath
-		hsh <- indexChunk encKey dat (FileLocation fpath 0 encKey)
+		fpathAbs <- canonicalizePath fpath
+		hsh <- indexChunk encKey dat (FileLocation fpathAbs 0 encKey)
 		return $ ChunkURI hsh encKey (Just $ snd $ splitFileName fpath)
 
 getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()
