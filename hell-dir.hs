@@ -33,7 +33,8 @@ data Opts = Opts {
 	metaEncKey :: Maybe Key,
 	verbose :: Bool,
 	dryRun :: Bool,
-	indexChunks :: Bool
+	indexChunks :: Bool,
+	forceInsert :: Bool
 	}
 
 options :: [OptDescr (Opts -> Opts)]
@@ -49,7 +50,9 @@ options = [
 	Option ['d'] ["dry-run"]
 		(NoArg (\o -> o {dryRun = True})) "Do not actually touch anything",
 	Option ['i'] ["index"]
-		(NoArg (\o -> o {indexChunks = True})) "Index files instead of inserting"
+		(NoArg (\o -> o {indexChunks = True})) "Index files instead of inserting",
+	Option ['f'] ["forec"]
+		(NoArg (\o -> o {forceInsert = True})) "Force updating files"
 	]
 
 defaultOptions = Opts {
@@ -60,7 +63,8 @@ defaultOptions = Opts {
 	metaEncKey = Nothing,
 	verbose = False,
 	dryRun = False,
-	indexChunks = False
+	indexChunks = False,
+	forceInsert = False
 	}
 
 convertTree :: [FilePath] -> Tree.DirTree a -> IO (Maybe FileTree)
@@ -96,7 +100,7 @@ pullTreeWalker ignores opts cpath (File rmtime link) (Just (Dir lmtime lfiles)) 
 	when (not $ dryRun opts) $ removeDirectoryRecursive $ joinPath cpath
 	pullTreeWalker ignores opts cpath (File rmtime link) Nothing
 pullTreeWalker ignores opts cpath (File rmtime link) (Just (File lmtime llink)) = do
-	if rmtime == lmtime then do
+	if rmtime == lmtime && not (forceInsert opts) then do
 		when (verbose opts) $ printf "File %s is as new as remote one; skipping\n" $ joinPath cpath
 		return ()
 		else do
@@ -143,7 +147,7 @@ pushTreeWalker ignores opts cpath (Dir lmtime lfiles) Nothing = do
 	return $ Dir lmtime $ Map.fromList $ catMaybes lfiles'
 -- File cases
 pushTreeWalker ignores opts cpath (File lmtime link) (Just (File rmtime rlink)) = do
-	if rmtime == lmtime then do
+	if rmtime == lmtime  && not (forceInsert opts) then do
 		when (verbose opts) $ printf "File %s is as new as local one; skipping\n" $ joinPath cpath
 		return $ File rmtime rlink
 		else do
