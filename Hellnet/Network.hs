@@ -75,6 +75,7 @@ import qualified Data.ByteString.Lazy.UTF8 as BUL
 import Random
 import Safe
 import System.IO.Error
+import System.Timeout
 import Text.HJson as JSON
 import Text.JSON.JPath as JPath
 
@@ -211,8 +212,9 @@ fetchFile' encKey cs = do
 
 queryNodeGet :: String -> Node -> IO (Maybe BSL.ByteString)
 queryNodeGet s node = do
-	rep <- ((return . Just) =<< simpleHTTP (mkRequest GET $ mkUrl node s)) `catch` const (return Nothing)
-	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
+	timeoutValue <- getTimeoutValue
+	rep <- timeout timeoutValue $ ((return . Just) =<< simpleHTTP (mkRequest GET $ mkUrl node s)) `catch` const (return Nothing)
+	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) $ join rep
 
 queryNodePost :: String -> [(String, String)] -> Node -> IO (Maybe BSL.ByteString)
 queryNodePost s fields node = do
@@ -220,8 +222,9 @@ queryNodePost s fields node = do
 	let url = mkUrl node s
 	let request = (mkRequest POST url :: Request BSL.ByteString) {rqBody=dat, rqHeaders=[Header HdrContentType "application/x-www-form-urlencoded",
 		Header HdrContentLength $ show $ BSL8.length dat]}
-	rep <- ((return . Just) =<< simpleHTTP request) `catch` const (return Nothing)
-	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) rep
+	timeoutValue <- getTimeoutValue
+	rep <- timeout timeoutValue $ ((return . Just) =<< simpleHTTP request) `catch` const (return Nothing)
+	return $ maybe Nothing (either (const Nothing) (\rsp -> if rspCode rsp == (2,0,0) then Just (rspBody rsp) else Nothing)) $ join rep
 
 -- | Perform handshake with node. Return Left (error message) if connection failed or Right (handshake success)
 handshakeWithNode :: Node -> IO (Either String Bool)
@@ -232,6 +235,12 @@ handshakeWithNode node = do
 		return $ maybe (Left "Failed to contact node") (\r -> Right $ (BSL8.unpack r) `elem` ["OK","EXISTS"]) res
 		) sP
 	return result
+
+-- | Get HTTP timeout value, either default or from environment
+getTimeoutValue :: IO Int
+getTimeoutValue = do
+	t <- safeGetEnv "HELLNET_TIMEOUT"
+	return $ fromMaybe 5000000 $ join $ fmap (readMay) t
 
 updateNodeContactTime :: String -> Integer -> IO ()
 updateNodeContactTime hst tim = do
