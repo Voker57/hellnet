@@ -76,10 +76,10 @@ decrypt' k ls = runST $ do
 	yV <- newSTRef y
 	eV <- newSTRef 0 :: ST s (STRef s Word32)
 	let mx z s y e p = do
-		kp <- readArray ia (fromIntegral ((p .&. 3) `xor` e))
+		let kp = k ! (fromIntegral ((p .&. 3) `xor` e))
 		return (((z `shiftR` 5 `xor` y `shiftL` 2) + (y `shiftR` 3 `xor` z `shiftL` 4)) `xor` ((s `xor` y) + (kp `xor` z)))
 	let iterate n = do
-		let summ = n * 0x9e3779b9
+		let summ = traceA "sum" (n * 0x9e3779b9)
 		writeSTRef eV (summ `shiftR` 2 .&. 3)
 		mapM (\p -> do
 			readArray ia (p - 1) >>= writeSTRef zV
@@ -88,18 +88,18 @@ decrypt' k ls = runST $ do
 			y <- readSTRef yV
 			e <- readSTRef eV
 			newV <- mx z summ y e (fromIntegral p)
-			writeArray ia p (prevV - newV)
+			writeArray ia p $ traceA "newV" ((traceA "prevV" prevV) - newV)
 			readArray ia p >>= writeSTRef yV
-			) $ map (fromIntegral) $ reverse [1..nitems]
+			) $ map (fromIntegral) $ reverse [1..nitems-1]
 		readArray ia (nitems - 1) >>= writeSTRef zV
-		prevV <- readArray ia 0
+		prevV <- readArray ia (traceShow "outta loop" 0)
 		z <- readSTRef zV
 		y <- readSTRef yV
 		e <- readSTRef eV
 		newV <- mx z summ y e 0
 		writeArray ia 0 (prevV - newV)
-		readArray ia (fromIntegral nitems-1) >>= writeSTRef yV
-	mapM (iterate . fromIntegral) $ reverse [0..nrounds]
+		readArray ia 0 >>= writeSTRef yV
+	mapM (iterate . fromIntegral) $ reverse [1..nrounds]
 	getElems ia
 
 --       n = -n;
