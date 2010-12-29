@@ -1,9 +1,5 @@
 module Crypto.XXTEA (encrypt, decrypt) where
 
-import System.IO.Unsafe
-import Control.Exception
-import Debug.Trace
-
 import Codec.Utils
 import Control.Monad.ST
 import Control.Monad.Trans
@@ -18,9 +14,6 @@ import Data.Word
 
 type XXTEAKey = Array Word8 Word32
 
-spy wtf = traceShow wtf wtf
-traceA s wtf = traceShow (s, wtf) wtf
-
 encrypt :: (Word32, Word32, Word32, Word32) -> [Octet] -> [Octet]
 encrypt (k1, k2, k3, k4) os =
 	let xkey = array (0, 3) [(0, k1), (1, k2), (2, k3), (3, k4)];
@@ -34,31 +27,31 @@ decrypt (k1, k2, k3, k4) os =
 
 encrypt' :: XXTEAKey -> [Word32] -> [Word32]
 encrypt' k ls = runST $ do
-	ia <- (newListArray (0, fromIntegral (length ls) - 1) $ spy ls) :: ST s (STArray s Integer Word32)
+	ia <- (newListArray (0, fromIntegral (length ls) - 1) ls) :: ST s (STArray s Integer Word32)
 	(lbound, rbound) <- getBounds ia
 	let nitems = genericLength [lbound..rbound]
-	let nrounds = traceA "rounds" (6 + 52 `div` (traceA "nitems" nitems))
-	z <- readArray ia $ traceA "nitems-1" (nitems-1)
+	let nrounds = 6 + 52 `div` nitems
+	z <- readArray ia (nitems-1)
 	zV <- newSTRef z
 	yV <- newSTRef 0 :: ST s (STRef s Word32)
 	eV <- newSTRef 0 :: ST s (STRef s Word32)
 	let mx z s y e p = do
-		let kp = k ! traceShow ("mxshit",p,e,(fromIntegral ((p .&. 3) `xor` e))) (fromIntegral ((p .&. 3) `xor` e))
-		return $ traceA ("cmx", z, y, s, kp) (((z `shiftR` 5 `xor` y `shiftL` 2) + (y `shiftR` 3 `xor` z `shiftL` 4)) `xor` ((s `xor` y) + (kp `xor` z)))
+		let kp = k ! (fromIntegral ((p .&. 3) `xor` e))
+		return (((z `shiftR` 5 `xor` y `shiftL` 2) + (y `shiftR` 3 `xor` z `shiftL` 4)) `xor` ((s `xor` y) + (kp `xor` z)))
 	let iterate n = do
 		let summ = n * 0x9e3779b9
-		writeSTRef eV $ traceA "e="((traceA "summ" summ) `shiftR` 2 .&. 3)
+		writeSTRef eV (summ `shiftR` 2 .&. 3)
 		mapM (\p -> do
-			readArray ia (p + 1) >>= return . traceA "y=" >>= writeSTRef yV
-			prevV <- readArray ia (traceA "reading prevV" p)
+			readArray ia (p + 1) >>= writeSTRef yV
+			prevV <- readArray ia p
 			z <- readSTRef zV
 			y <- readSTRef yV
 			e <- readSTRef eV
 			newV <- mx z summ y e (fromIntegral p)
-			writeArray ia p $ traceA "newV" ((traceA "prevV" prevV) + newV)
+			writeArray ia p (prevV + newV)
 			readArray ia p >>= writeSTRef zV
 			) $ map (fromIntegral) [0.. if nitems-2 > 0 then nitems-2 else 0]
-		readArray ia 0 >>= return . traceA "ia[0]" >>= writeSTRef yV
+		readArray ia 0 >>= writeSTRef yV
 		prevV <- readArray ia (nitems - 1)
 		z <- readSTRef zV
 		y <- readSTRef yV
@@ -81,7 +74,7 @@ decrypt' k ls = runST $ do
 		let kp = k ! (fromIntegral ((p .&. 3) `xor` e))
 		return (((z `shiftR` 5 `xor` y `shiftL` 2) + (y `shiftR` 3 `xor` z `shiftL` 4)) `xor` ((s `xor` y) + (kp `xor` z)))
 	let iterate n = do
-		let summ = traceA "sum" (n * 0x9e3779b9)
+		let summ = n * 0x9e3779b9
 		writeSTRef eV (summ `shiftR` 2 .&. 3)
 		mapM (\p -> do
 			readArray ia (p - 1) >>= writeSTRef zV
@@ -90,11 +83,11 @@ decrypt' k ls = runST $ do
 			y <- readSTRef yV
 			e <- readSTRef eV
 			newV <- mx z summ y e (fromIntegral p)
-			writeArray ia p $ traceA "newV" ((traceA "prevV" prevV) - newV)
+			writeArray ia p (prevV - newV)
 			readArray ia p >>= writeSTRef yV
 			) $ map (fromIntegral) $ reverse [1..if nitems-1 > 1 then nitems-1 else 1]
 		readArray ia (nitems - 1) >>= writeSTRef zV
-		prevV <- readArray ia (traceShow "outta loop" 0)
+		prevV <- readArray ia 0
 		z <- readSTRef zV
 		y <- readSTRef yV
 		e <- readSTRef eV
