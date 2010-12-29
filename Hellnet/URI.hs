@@ -1,5 +1,6 @@
 module Hellnet.URI (parseHellnetURI, HellnetURI(..)) where
 
+import Codec.Utils
 import Data.List
 import Data.Maybe
 import Hellnet
@@ -10,7 +11,8 @@ import Text.Show
 import Text.URI
 
 data HellnetURI =
-	ChunkURI Hash -- ^ Chunk hash
+	CryptURI [Octet] -- ^ Encrypted content URI
+	| ChunkURI Hash -- ^ Chunk hash
 		(Maybe Key) -- ^ Encryption key
 		(Maybe String) -- ^ File name
 	| FileURI Hash -- ^ Filelink's start hash
@@ -46,6 +48,11 @@ instance Show HellnetURI where
 					otherwise -> if null mpath then [] else mpath
 				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
+			(CryptURI dat) -> nullURI {
+				uriScheme = Just "hell"
+				, uriRegName = Just "crypt"
+				, uriPath = "/" ++ hashToHex dat
+				}
 	showList = showListWith (const show)
 
 parseHellnetURI :: String -> Maybe HellnetURI
@@ -69,6 +76,7 @@ parseHellnetURI' u = let
 								(keyid : mname : mpath) -> Just $ MetaURI (hexToHash keyid) (Just mname) (intercalate "/" mpath) key fname
 								[keyid] -> Just $ MetaURI (hexToHash keyid) Nothing "" key fname
 								otherwise -> Nothing
+						"crypt" -> Just $ CryptURI $ hexToHash $ tailSafe (uriPath u)
 						otherwise ->  Nothing
 			else Nothing
 
