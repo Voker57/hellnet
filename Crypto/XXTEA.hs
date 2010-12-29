@@ -10,6 +10,7 @@ import Control.Monad.Trans
 import Data.Array
 import Data.Array.ST
 import Data.Array.MArray
+import Data.List
 import Data.STRef
 import Data.Bits
 import qualified Data.ByteString as BS
@@ -34,7 +35,8 @@ decrypt (k1, k2, k3, k4) os =
 encrypt' :: XXTEAKey -> [Word32] -> [Word32]
 encrypt' k ls = runST $ do
 	ia <- (newListArray (0, fromIntegral (length ls) - 1) $ spy ls) :: ST s (STArray s Integer Word32)
-	(_, nitems) <- getBounds ia
+	(lbound, rbound) <- getBounds ia
+	let nitems = genericLength [lbound..rbound]
 	let nrounds = traceA "rounds" (6 + 52 `div` (traceA "nitems" nitems))
 	z <- readArray ia $ traceA "nitems-1" (nitems-1)
 	zV <- newSTRef z
@@ -55,7 +57,7 @@ encrypt' k ls = runST $ do
 			newV <- mx z summ y e (fromIntegral p)
 			writeArray ia p $ traceA "newV" ((traceA "prevV" prevV) + newV)
 			readArray ia p >>= writeSTRef zV
-			) $ map (fromIntegral) [0..nitems-2]
+			) $ map (fromIntegral) [0.. if nitems-2 > 0 then nitems-2 else 0]
 		readArray ia 0 >>= return . traceA "ia[0]" >>= writeSTRef yV
 		prevV <- readArray ia (nitems - 1)
 		z <- readSTRef zV
@@ -64,7 +66,7 @@ encrypt' k ls = runST $ do
 		newV <- mx z summ y e (fromIntegral nitems-1)
 		writeArray ia (nitems - 1) (prevV + newV)
 		readArray ia (fromIntegral nitems-1) >>= writeSTRef zV
-	mapM (iterate . fromIntegral) [1..nrounds]
+	mapM (iterate . fromIntegral) [1..if nrounds > 1 then nrounds else 1]
 	getElems ia
 
 decrypt' k ls = runST $ do
@@ -90,7 +92,7 @@ decrypt' k ls = runST $ do
 			newV <- mx z summ y e (fromIntegral p)
 			writeArray ia p $ traceA "newV" ((traceA "prevV" prevV) - newV)
 			readArray ia p >>= writeSTRef yV
-			) $ map (fromIntegral) $ reverse [1..nitems-1]
+			) $ map (fromIntegral) $ reverse [1..if nitems-1 > 1 then nitems-1 else 1]
 		readArray ia (nitems - 1) >>= writeSTRef zV
 		prevV <- readArray ia (traceShow "outta loop" 0)
 		z <- readSTRef zV
@@ -99,7 +101,7 @@ decrypt' k ls = runST $ do
 		newV <- mx z summ y e 0
 		writeArray ia 0 (prevV - newV)
 		readArray ia 0 >>= writeSTRef yV
-	mapM (iterate . fromIntegral) $ reverse [1..nrounds]
+	mapM (iterate . fromIntegral) $ reverse [1..if nrounds > 1 then nrounds else 1]
 	getElems ia
 
 --       n = -n;
