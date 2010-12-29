@@ -5,6 +5,7 @@ import Control.Monad.ST
 import Data.Array
 import Data.Array.ST
 import Data.Array.MArray
+import Data.List
 import Data.STRef
 import Data.Bits
 import qualified Data.ByteString as BS
@@ -29,7 +30,8 @@ decrypt (k1, k2, k3, k4) os =
 encrypt' :: XXTEAKey -> [Word32] -> [Word32]
 encrypt' k ls = runST $ do
 	ia <- (newListArray (0, fromIntegral (length ls) - 1) ls) :: ST s (STArray s Integer Word32)
-	(_, nitems) <- getBounds ia
+	(lbound, rbound) <- getBounds ia
+	let nitems = genericLength [lbound..rbound]
 	let nrounds = 6 + 52 `div` nitems
 	z <- readArray ia (nitems-1)
 	zV <- newSTRef z
@@ -64,7 +66,8 @@ encrypt' k ls = runST $ do
 
 decrypt' k ls = runST $ do
 	ia <- (newListArray (0, fromIntegral (length ls) - 1) ls) :: ST s (STArray s Integer Word32)
-	(_, nitems) <- getBounds ia
+	(lbound, rbound) <- getBounds ia
+	let nitems = genericLength [lbound..rbound]
 	let nrounds = (6 + 52 `div` nitems)
 	y <- readArray ia 0
 	zV <- newSTRef 0 :: ST s (STRef s Word32)
