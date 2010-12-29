@@ -2,7 +2,6 @@ module Crypto.XXTEA (encrypt, decrypt) where
 
 import Codec.Utils
 import Control.Monad.ST
-import Control.Monad.Trans
 import Data.Array
 import Data.Array.ST
 import Data.Array.MArray
@@ -14,11 +13,14 @@ import Data.Word
 
 type XXTEAKey = Array Word8 Word32
 
+-- | Encrypts message with given key. Message must be more than 4 bytes.
 encrypt :: (Word32, Word32, Word32, Word32) -> [Octet] -> [Octet]
 encrypt (k1, k2, k3, k4) os =
 	let xkey = array (0, 3) [(0, k1), (1, k2), (2, k3), (3, k4)];
 		w32s = listFromOctets os in
 			listToOctets $ encrypt' xkey w32s
+
+-- | Decrypts message with given key. Message must be more than 4 bytes.
 decrypt :: (Word32, Word32, Word32, Word32) -> [Octet] -> [Octet]
 decrypt (k1, k2, k3, k4) os =
  	let xkey = array (0, 3) [(0, k1), (1, k2), (2, k3), (3, k4)];
