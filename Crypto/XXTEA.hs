@@ -5,7 +5,6 @@ import Control.Monad.ST
 import Data.Array
 import Data.Array.ST
 import Data.Array.MArray
-import Data.List
 import Data.STRef
 import Data.Bits
 import qualified Data.ByteString as BS
@@ -30,8 +29,7 @@ decrypt (k1, k2, k3, k4) os =
 encrypt' :: XXTEAKey -> [Word32] -> [Word32]
 encrypt' k ls = runST $ do
 	ia <- (newListArray (0, fromIntegral (length ls) - 1) ls) :: ST s (STArray s Integer Word32)
-	(lbound, rbound) <- getBounds ia
-	let nitems = genericLength [lbound..rbound]
+	(_, nitems) <- getBounds ia
 	let nrounds = 6 + 52 `div` nitems
 	z <- readArray ia (nitems-1)
 	zV <- newSTRef z
@@ -52,7 +50,7 @@ encrypt' k ls = runST $ do
 			newV <- mx z summ y e (fromIntegral p)
 			writeArray ia p (prevV + newV)
 			readArray ia p >>= writeSTRef zV
-			) $ map (fromIntegral) [0.. if nitems-2 > 0 then nitems-2 else 0]
+			) $ map (fromIntegral) [0..nitems-2]
 		readArray ia 0 >>= writeSTRef yV
 		prevV <- readArray ia (nitems - 1)
 		z <- readSTRef zV
@@ -61,7 +59,7 @@ encrypt' k ls = runST $ do
 		newV <- mx z summ y e (fromIntegral nitems-1)
 		writeArray ia (nitems - 1) (prevV + newV)
 		readArray ia (fromIntegral nitems-1) >>= writeSTRef zV
-	mapM (iterate . fromIntegral) [1..if nrounds > 1 then nrounds else 1]
+	mapM (iterate . fromIntegral) [1..nrounds]
 	getElems ia
 
 decrypt' k ls = runST $ do
@@ -87,7 +85,7 @@ decrypt' k ls = runST $ do
 			newV <- mx z summ y e (fromIntegral p)
 			writeArray ia p (prevV - newV)
 			readArray ia p >>= writeSTRef yV
-			) $ map (fromIntegral) $ reverse [1..if nitems-1 > 1 then nitems-1 else 1]
+			) $ map (fromIntegral) $ reverse [1..nitems-1]
 		readArray ia (nitems - 1) >>= writeSTRef zV
 		prevV <- readArray ia 0
 		z <- readSTRef zV
@@ -96,7 +94,7 @@ decrypt' k ls = runST $ do
 		newV <- mx z summ y e 0
 		writeArray ia 0 (prevV - newV)
 		readArray ia 0 >>= writeSTRef yV
-	mapM (iterate . fromIntegral) $ reverse [1..if nrounds > 1 then nrounds else 1]
+	mapM (iterate . fromIntegral) $ reverse [1..nrounds]
 	getElems ia
 
 --       n = -n;
