@@ -1,6 +1,9 @@
-module Hellnet.URI (parseHellnetURI, HellnetURI(..)) where
+module Hellnet.URI (parseHellnetURI, HellnetURI(..), decryptURI, encryptURI) where
 
+import Codec.Encryption.XXTEA as XXTEA
 import Codec.Utils
+import qualified Data.ByteString.UTF8 as BS8
+import qualified Data.ByteString as BS
 import Data.List
 import Data.Maybe
 import Hellnet
@@ -79,6 +82,20 @@ parseHellnetURI' u = let
 						"crypt" -> Just $ CryptURI $ hexToHash $ tailSafe (uriPath u)
 						otherwise ->  Nothing
 			else Nothing
+
+-- | Decrypt crypted URI, or just return it if it's not crypted
+decryptURI :: HellnetURI -> Maybe HellnetURI
+decryptURI (CryptURI dt) =
+	let decryptedDt = XXTEA.decrypt xxTeaKey dt in
+		case parseHellnetURI (BS8.toString $ BS.pack decryptedDt)	of
+			Just (CryptURI _) -> Nothing -- Really, no need to be so paranoid
+			u -> u
+decryptURI u = Just u
+
+-- | Encrypts URI
+encryptURI :: HellnetURI -> HellnetURI
+encryptURI u@(CryptURI _) = u
+encryptURI u = CryptURI $ XXTEA.encrypt xxTeaKey $ BS.unpack $ BS8.fromString $ show u
 
 -- this is for constructing pairlists from maybes
 maybeToPairs :: Maybe a -> (a -> String) -> String -> [(String, String)]

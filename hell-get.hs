@@ -17,6 +17,7 @@
 
 import Control.Monad
 import Data.List
+import Data.Maybe
 import Hellnet
 import Hellnet.Files
 import Hellnet.Network
@@ -31,16 +32,50 @@ import System.Directory
 import System.Environment (getArgs)
 import System.IO.Error
 import System.Random
+import Text.Printf
 
-data Opts = Opts { deintegrateFile :: Bool }
+data Opts = Opts { deintegrateFile :: Bool, decryptUri :: Bool }
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['d'] ["deintegrate"]
-		(NoArg (\o -> o {deintegrateFile = True}) ) "Remove random chunks of file after fetching (increases deniability, decreases seedability)"
+		(NoArg (\o -> o {deintegrateFile = True}) ) "Remove random chunks of file after fetching (increases deniability, decreases seedability)",
+	Option ['p'] ["decrypt-uri", "decrypt-url"]
+		(NoArg (\o -> o {decryptUri = True})) "Decrypt given crypted URIs"
 	]
 
-defaultOptions = Opts { deintegrateFile = False }
+defaultOptions = Opts { deintegrateFile = False, decryptUri = False }
+
+getURI opts uri =
+	case uri of
+		Nothing -> fail "Incorrect URI"
+		Just (ChunkURI hsh key fname) -> do
+			let filename = maybe "/dev/stdout" (id) fname
+			conts <- findChunk key hsh
+			maybe (fail "Chunk not found in network") (BSL.writeFile filename) conts
+		Just (FileURI hsh key fname) -> do
+			let filename = maybe "/dev/stdout" (id) fname
+			fil <- fetchFile key hsh
+			either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (\hs -> do
+			downloadFile key filename hs
+			when (deintegrateFile opts) (do
+				toDelete <- filterM (const $ do
+					rnd <- randomIO :: IO Float
+					return (rnd > 0.8)
+					) hs
+				mapM_ (purgeChunk) toDelete
+				)
+			return ()
+			) fil
+		Just u@(MetaURI _ _ _ _ fname) -> do
+			let filename = maybe "/dev/stdout" (id) fname
+			resultM <- findURI u
+			maybe (fail "Not found") (BSL.writeFile filename) resultM
+		Just u@(CryptURI dt) -> do
+			let decryptedUri = Hellnet.URI.decryptURI u
+			when (isJust decryptedUri) $ printf "Actual URI is %s\n" (show $ fromJust decryptedUri)
+			getURI opts decryptedUri
+		otherwise -> fail "URI type not implemented yet"
 
 main = do
 	args <- getArgs
@@ -48,30 +83,9 @@ main = do
 	let opts = processOptions defaultOptions optz
 	if Prelude.null argz then
 		Prelude.putStrLn "Usage: hell-get <hell:// uri>"
-		else do
+		else if decryptUri opts then
+			mapM_ (\u -> case u of Nothing -> putStrLn ""; Just Nothing -> putStrLn ""; Just (Just uV) -> print uV) $ map (fmap (decryptURI) . parseHellnetURI) argz
+			else do
 			let uri = parseHellnetURI $ head argz
-			case uri of
-				Nothing -> fail "Incorrect URI"
-				Just (ChunkURI hsh key fname) -> do
-					let filename = maybe "/dev/stdout" (id) fname
-					conts <- findChunk key hsh
-					maybe (fail "Chunk not found in network") (BSL.writeFile filename) conts
-				Just (FileURI hsh key fname) -> do
-					let filename = maybe "/dev/stdout" (id) fname
-					fil <- fetchFile key hsh
-					either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (\hs -> do
-					downloadFile key filename hs
-					when (deintegrateFile opts) (do
-						toDelete <- filterM (const $ do
-							rnd <- randomIO :: IO Float
-							return (rnd > 0.8)
-							) hs
-						mapM_ (purgeChunk) toDelete
-						)
-					return ()
-					) fil
-				Just u@(MetaURI _ _ _ _ fname) -> do
-					let filename = maybe "/dev/stdout" (id) fname
-					resultM <- findURI u
-					maybe (fail "Not found") (BSL.writeFile filename) resultM
-				otherwise -> fail "URI type not implemented yet"
+			getURI opts uri
+				

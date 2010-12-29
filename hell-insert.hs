@@ -32,7 +32,7 @@ import System.Environment (getArgs)
 import System.FilePath
 import System.IO
 
-data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool, indexOnly :: Bool}
+data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool, indexOnly :: Bool, crypt :: Bool, cryptOnly :: Bool}
 
 options :: [OptDescr (Opts -> Opts)]
 options = [
@@ -41,20 +41,24 @@ options = [
 	Option ['c'] ["chunk"]
 		(NoArg (\o -> o {chunk = True})) "Add file as single chunk (Only for files < 256 kB)",
 	Option ['i'] ["index-only"]
-		(NoArg (\o -> o {indexOnly = True})) "Do not insert chunks into store, but add them into chunks' map instead, so hell-serve would get them out of file directly. Much slower. Probably."
+		(NoArg (\o -> o {indexOnly = True})) "Do not insert chunks into store, but add them into chunks' map instead, so hell-serve would get them out of file directly. Much slower. Probably.",
+	Option ['p'] ["crypt"]
+		(NoArg (\o -> o {crypt = True})) "Encrypt URI with XXTEA, which will help to notice if URI was tampered with and hide its contents from first sight",
+	Option [] ["crypt-only"]
+		(NoArg (\o -> o {cryptOnly = True})) "Encrypt given URIs with XXTEA (see above)"
 	]
 
-defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, indexOnly = True}
+defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, indexOnly = True, crypt = False, cryptOnly = False}
 
 
-insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
+insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO HellnetURI
 insertFilePrintHash encKey fname = do
 	let filename = last (splitPath fname)
 	hsh <- insertFile encKey fname
 	let url = FileURI hsh encKey (Just filename)
-	putStrLn $ show url
+	return url
 
-insertChunkPrintHash :: Maybe [Octet] -> FilePath -> IO ()
+insertChunkPrintHash :: Maybe [Octet] -> FilePath -> IO HellnetURI
 insertChunkPrintHash encKey fname = do
 	let filename = last (splitPath fname)
 	dat <- BSL.readFile fname
@@ -62,16 +66,16 @@ insertChunkPrintHash encKey fname = do
 	hsh <- insertChunk encKey dat
 	let
 	let url = ChunkURI hsh encKey (Just filename)
-	putStrLn $ show url
+	return url
 
-indexFilePrintHash :: Maybe [Octet] ->  FilePath -> IO ()
+indexFilePrintHash :: Maybe [Octet] ->  FilePath -> IO HellnetURI
 indexFilePrintHash encKey fname = do
 	let filename = last (splitPath fname)
 	hsh <- indexFile encKey fname
 	let url = FileURI hsh encKey (Just filename)
-	putStrLn $ show url
+	return url
 
-indexChunkPrintHash :: Maybe [Octet] -> FilePath -> IO ()
+indexChunkPrintHash :: Maybe [Octet] -> FilePath -> IO HellnetURI
 indexChunkPrintHash encKey fname = do
 	let filename = last (splitPath fname)
 	fullPath <- canonicalizePath fname
@@ -79,24 +83,33 @@ indexChunkPrintHash encKey fname = do
 	when (not $ BSL.null $ BSL.drop (fromIntegral chunkSize) dat) (fail $ "Too large to insert as chunk: " ++ fname)
 	hsh <- indexChunk encKey dat (FileLocation fullPath 0 encKey)
 	let url = ChunkURI hsh encKey (Just filename)
-	putStrLn $ show url
+	return url
 
 main = do
 	args <- getArgs
  	let (opts, argz, errs) = getOpt Permute options args
 	let optz = processOptions defaultOptions opts
 	when (or [(not . null $ errs), (null argz)]) (fail $ (usageInfo "Usage: hell-insert [file] file1 [file2...]" options) ++ concat errs)
-	theKey <- if encrypt optz then
-		maybe (genKey >>= return . Just) (return . Just) (encKey optz)
-		else
-		return Nothing
-	if chunk optz then
-		if indexOnly optz then
-			mapM (indexChunkPrintHash theKey) argz
+	if cryptOnly optz then do
+		mapM (\s -> do
+			case parseHellnetURI s of
+				Nothing -> putStrLn ""
+				Just (CryptURI _) -> putStrLn ""
+				Just u -> print $ encryptURI u
+			) argz
+		else do
+		theKey <- if encrypt optz then
+			maybe (genKey >>= return . Just) (return . Just) (encKey optz)
 			else
-			mapM (insertChunkPrintHash theKey) argz
-		else
-		if indexOnly optz then
-			mapM (indexFilePrintHash theKey) argz
+			return Nothing
+		urls <- if chunk optz then
+			if indexOnly optz then
+				mapM (indexChunkPrintHash theKey) argz
+				else
+				mapM (insertChunkPrintHash theKey) argz
 			else
-			mapM (insertFilePrintHash theKey) argz
+			if indexOnly optz then
+				mapM (indexFilePrintHash theKey) argz
+				else
+				mapM (insertFilePrintHash theKey) argz
+		mapM (\u -> if crypt optz then print $ encryptURI u else print u) urls

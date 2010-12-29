@@ -17,6 +17,7 @@
 
 module Hellnet where
 
+import Data.Word
 import Codec.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
@@ -43,3 +44,6 @@ encKeySize = 32
 
 numThreads :: Integer
 numThreads = 4
+
+xxTeaKey :: (Word32, Word32, Word32, Word32)
+xxTeaKey = (104,101,108,108)
