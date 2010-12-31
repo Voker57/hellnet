@@ -27,6 +27,7 @@ import Hellnet.Utils
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import qualified Data.ByteString.Lazy as BSL
+import Safe
 import System.Console.GetOpt
 import System.Directory
 import System.Environment (getArgs)
@@ -50,26 +51,32 @@ defaultOptions = Opts { deintegrateFile = False, decryptUri = False }
 getURI opts uri =
 	case uri of
 		Nothing -> fail "Incorrect URI"
-		Just (ChunkURI hsh key fname) -> do
+		Just (ChunkURI hsh key fnameUnsafe) -> do
+			let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
 			let filename = maybe "/dev/stdout" (id) fname
+			hPutStrLn stderr $ printf "Saving to file: %s" filename
 			conts <- findChunk key hsh
 			maybe (fail "Chunk not found in network") (BSL.writeFile filename) conts
-		Just (FileURI hsh key fname) -> do
+		Just (FileURI hsh key fnameUnsafe) -> do
+			let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
 			let filename = maybe "/dev/stdout" (id) fname
+			hPutStrLn stderr $ printf "Saving to file: %s" filename
 			fil <- fetchFile key hsh
 			either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (crockford) nf))) )) (\hs -> do
-			downloadFile key filename hs
-			when (deintegrateFile opts) (do
-				toDelete <- filterM (const $ do
-					rnd <- randomIO :: IO Float
-					return (rnd > 0.8)
-					) hs
-				mapM_ (purgeChunk) toDelete
-				)
-			return ()
-			) fil
-		Just u@(MetaURI _ _ _ _ fname) -> do
+				downloadFileChunks key filename hs
+				when (deintegrateFile opts) (do
+					toDelete <- filterM (const $ do
+						rnd <- randomIO :: IO Float
+						return (rnd > 0.8)
+						) hs
+					mapM_ (purgeChunk) toDelete
+					)
+				return ()
+				) fil
+		Just u@(MetaURI _ _ _ _ fnameUnsafe) -> do
+			let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
 			let filename = maybe "/dev/stdout" (id) fname
+			hPutStrLn stderr $ printf "Saving to file: %s" filename
 			resultM <- findURI u
 			maybe (fail "Not found") (BSL.writeFile filename) resultM
 		Just u@(CryptURI dt) -> do

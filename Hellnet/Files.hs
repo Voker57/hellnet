@@ -15,13 +15,14 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Files (insertFile, downloadFile, indexFile, indexData) where
+module Hellnet.Files (insertFile, downloadFile, indexFile, indexData, downloadFileChunks) where
 
 import Codec.Utils
 import Data.Foldable (foldrM)
 import Data.Maybe
 import Hellnet
 import Hellnet.ExternalChunks
+import Hellnet.Network
 import Hellnet.Storage
 import Hellnet.URI
 import Hellnet.Utils
@@ -75,8 +76,14 @@ getChunkAppendToFile encKey fname hsh = do
 	conts <- getChunk encKey hsh
 	maybe (error ("chunk not found in storage: " ++ (crockford hsh))) (BSL.appendFile fname) conts
 
-downloadFile :: Maybe Key -> FilePath -> [Hash] -> IO ()
-downloadFile encKey fname hs = do
+downloadFile :: Maybe Key -> FilePath -> Hash -> IO ()
+downloadFile encKey fname h = do
+	hsE <- fetchFile encKey h
+	case hsE of
+		Left _ -> return ()
+		Right hs -> downloadFileChunks encKey fname hs
+
+downloadFileChunks :: Maybe Key -> FilePath -> [Hash] -> IO ()
+downloadFileChunks encKey fname hs = do
 	writeFile fname ""
-	mapM (getChunkAppendToFile encKey fname) hs
-	return ()
+	mapM_ (getChunkAppendToFile encKey fname) hs
