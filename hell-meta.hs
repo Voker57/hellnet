@@ -52,9 +52,9 @@ data Opts = Opts {
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['m'] ["meta-encryption"]
-		(OptArg (\s o ->  o {encryptMeta = True, metaEncKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Use encryption on meta (optionally (if encrypting) with specified key)",
+		(OptArg (\s o ->  o {encryptMeta = True, metaEncKey = maybe (Nothing) (Just . decrockford) s}) "key") "Use encryption on meta (optionally (if encrypting) with specified key)",
 	Option ['e'] ["encrypt"]
-		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
+		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . decrockford) s}) "key") "Encrypt content (optionally with specified key)",
 	Option ['u'] ["update-meta"]
 		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval",
 	Option ['p'] ["pretty-print"]
@@ -73,7 +73,7 @@ defaultOptions = Opts {
 fetchMetaPrintResult :: KeyID -> String -> IO ()
 fetchMetaPrintResult keyid mname = do
 	result <- fetchMeta keyid mname
-	let metaName = hashToHex (take 10 keyid) ++ ".../" ++ mname
+	let metaName = crockford (take 10 keyid) ++ ".../" ++ mname
 	putStrLn $ case result of
 		True -> "Meta "++ metaName ++" updated"
 		False -> "Meta "++ metaName ++" unchanged"
@@ -93,7 +93,7 @@ main = do
 				opts' = case encKey of
 					Just k -> preOpts {encryptMeta = True, metaEncKey = Just k}
 					otherwise -> preOpts
-					in (head args : hashToHex keyid : namepath, opts')
+					in (head args : crockford keyid : namepath, opts')
 		otherwise -> (args, preOpts)
 	theMetaKey <- if encryptMeta opts then
 		(return . Just) =<< (maybe (genKey) (return) $ metaEncKey opts)
@@ -105,7 +105,7 @@ main = do
 		return Nothing
 	let jsonPrinter = maybe (JSON.toString) (PrettyJSON.toString) $ prettyPrint opts
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
-	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
+	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (crockford $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
 	let invokeEditor bs = do
 		(fP, hdl) <- openTempFile "/tmp" "hellnetmeta"
 		BSL.hPut hdl bs
@@ -200,7 +200,7 @@ main = do
 		["genkey"] -> do
 			putStrLn "Generating keys..."
 			keyID <- generateKeyPair
-			putStrLn $ "Your key ID is " ++ hashToHex keyID
+			putStrLn $ "Your key ID is " ++ crockford keyID
 		["new", keyidHex, mname] -> do
 			keyid <- resolveKeyName keyidHex
 			emptyUri <- insertData theKey $ maybe (id) (encryptSym) theMetaKey $ BUL.fromString "{}"
@@ -227,9 +227,9 @@ main = do
 		["alias", "rm", name] -> do
 			storeKeyAliases $ Map.delete name keyAliases
 		["alias", "show", name] -> do
-			putStrLn $ maybe (error "Alias not found") (hashToHex) $ Map.lookup name keyAliases
+			putStrLn $ maybe (error "Alias not found") (crockford) $ Map.lookup name keyAliases
 		["alias", "list"] -> do
-			mapM_ (\(k, v) -> putStrLn $ k ++ ": " ++ hashToHex v) $ Map.toList keyAliases
+			mapM_ (\(k, v) -> putStrLn $ k ++ ": " ++ crockford v) $ Map.toList keyAliases
 		otherwise ->
 			let usageStrings =  [ "",
 				"update <key id> [<meta name>]    -- Update selected meta or all metas signed by key",

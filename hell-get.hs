@@ -56,7 +56,7 @@ getURI opts uri =
 		Just (FileURI hsh key fname) -> do
 			let filename = maybe "/dev/stdout" (id) fname
 			fil <- fetchFile key hsh
-			either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (hashToHex) nf))) )) (\hs -> do
+			either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (crockford) nf))) )) (\hs -> do
 			downloadFile key filename hs
 			when (deintegrateFile opts) (do
 				toDelete <- filterM (const $ do

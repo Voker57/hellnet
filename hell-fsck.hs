@@ -63,7 +63,7 @@ checkHashesInDirectory opts d = do
 	mapM (checkChunk opts) $ zip (repeat d) dirConts
 
 checkChunk opts (d, c) = do
-	let hsh = hexToHash (d++c)
+	let hsh = decrockford (d++c)
 	fp <- toFullPath $ joinPath ["store", d, c]
 	datM <- getFile fp
 	case datM of
@@ -84,7 +84,7 @@ checkMappingsInDirectory opts d = do
 	mapM (checkMapping opts) $ zip (repeat d) dirConts
 	
 checkMapping opts (d, c) = do
-	let hsh = hexToHash (d++c)
+	let hsh = decrockford (d++c)
 	fp <- toFullPath $ joinPath ["chunkmap", d, c]
 	datM <- getFile fp
 	case datM of

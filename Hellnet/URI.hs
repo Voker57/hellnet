@@ -34,27 +34,27 @@ instance Show HellnetURI where
 			(ChunkURI hsh key fname) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "chunk"
-				, uriPath = "/" ++ hashToHex hsh
-				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
+				, uriPath = "/" ++ crockford hsh
+				, uriQuery = let ps = ([] ++ maybeToPairs key (crockford) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 			(FileURI hsh key fname) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "file"
-				, uriPath = "/" ++ hashToHex hsh
-				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
+				, uriPath = "/" ++ crockford hsh
+				, uriQuery = let ps = ([] ++ maybeToPairs key (crockford) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 			(MetaURI kid mname mpath key fname) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "meta"
-				, uriPath = "/" ++ hashToHex kid ++ "/" ++ case mname of
+				, uriPath = "/" ++ crockford kid ++ "/" ++ case mname of
 					Just mn -> intercalate "/" [mn, mpath]
 					otherwise -> if null mpath then [] else mpath
-				, uriQuery = let ps = ([] ++ maybeToPairs key (hashToHex) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
+				, uriQuery = let ps = ([] ++ maybeToPairs key (crockford) "key"  ++ maybeToPairs fname (id) "name") in if null ps then Nothing else Just (pairsToQuery ps)
 				}
 			(CryptURI dat) -> nullURI {
 				uriScheme = Just "hell"
 				, uriRegName = Just "crypt"
-				, uriPath = "/" ++ hashToHex dat
+				, uriPath = "/" ++ crockford dat
 				}
 	showList = showListWith (const show)
 
@@ -67,19 +67,19 @@ parseHellnetURI' :: URI -> Maybe HellnetURI
 parseHellnetURI' u = let
 	params = uriQueryItems u in
 		if uriScheme u == Just "hell" then
-			let key = maybe (Nothing) (Just . hexToHash) $ lookup "key" params;
+			let key = maybe (Nothing) (Just . decrockford) $ lookup "key" params;
 				fname = lookup "name" params in
 					case fromMaybe "" (uriRegName u) of
-						"chunk" -> let hsh = hexToHash $ tailSafe $ uriPath u in
+						"chunk" -> let hsh = decrockford $ tailSafe $ uriPath u in
 								Just $ ChunkURI hsh key fname
-						"file" -> let hsh = hexToHash $ tailSafe $ uriPath u in
+						"file" -> let hsh = decrockford $ tailSafe $ uriPath u in
 								Just $ FileURI hsh key fname
 						"meta" -> let splitPath = explode '/' $ tailSafe $ uriPath u in
 							case splitPath of
-								(keyid : mname : mpath) -> Just $ MetaURI (hexToHash keyid) (Just mname) (intercalate "/" mpath) key fname
-								[keyid] -> Just $ MetaURI (hexToHash keyid) Nothing "" key fname
+								(keyid : mname : mpath) -> Just $ MetaURI (decrockford keyid) (Just mname) (intercalate "/" mpath) key fname
+								[keyid] -> Just $ MetaURI (decrockford keyid) Nothing "" key fname
 								otherwise -> Nothing
-						"crypt" -> Just $ CryptURI $ hexToHash $ tailSafe (uriPath u)
+						"crypt" -> Just $ CryptURI $ decrockford $ tailSafe (uriPath u)
 						otherwise ->  Nothing
 			else Nothing
 

@@ -49,7 +49,7 @@ instance Jsonable Meta where
 					, [JString nameS]
 					, [JString contentURI]
 					] -> maybe (Nothing) (\u -> Just $ Meta {
-						keyID = hexToHash keyHash
+						keyID = decrockford keyHash
 						, metaName = nameS
 						, timestamp = (round timestampF)
 						, contentURI = u
@@ -57,7 +57,7 @@ instance Jsonable Meta where
 						, message = Nothing}) (parseHellnetURI contentURI)
 				otherwise -> Nothing
 	toJson m = toJson $ Map.fromList [
-		("key", toJson $ hashToHex $ keyID m)
+		("key", toJson $ crockford $ keyID m)
 		, ("updated", toJson $ timestamp m)
 		, ("name", toJson $ metaName m)
 		, ("content", toJson $ show $ contentURI m)

@@ -33,8 +33,8 @@ instance Jsonable ChunkLocation where
 	toJson (FileLocation path offset encKey) = JObject $ Map.fromList $ [
 		("type", toJson "file"),
 		("path", toJson path),
-		("offset", toJson offset)] ++ (maybeToList $ fmap ((\a -> ("key", a)) . toJson . hashToHex) encKey)
+		("offset", toJson offset)] ++ (maybeToList $ fmap ((\a -> ("key", a)) . toJson . crockford) encKey)
 	fromJson (JObject m) = case map (flip Map.lookup $ m) ["type", "path", "offset", "key"] of
-		[Just (JString "file"), Just (JString path), Just (JNumber offset), keyM] -> Just $ FileLocation path (round offset) (fmap (\(JString s) -> hexToHash s) keyM)
+		[Just (JString "file"), Just (JString path), Just (JNumber offset), keyM] -> Just $ FileLocation path (round offset) (fmap (\(JString s) -> decrockford s) keyM)
 		otherwise -> Nothing
 	fromJson _ = Nothing

@@ -129,7 +129,7 @@ fetchChunk' s p = do
 -- | retrieves chunk using server, returns success status
 fetchChunk :: Node -> Hash -> IO Bool
 fetchChunk node p = do
-	let chunkID = hashToHex p
+	let chunkID = crockford p
 	let reqString = "chunks/" ++ (take 2 chunkID) ++ "/" ++ (drop 2 chunkID)
 	req <- queryNodeGet reqString node
 	maybe (return False)
@@ -307,7 +307,7 @@ fetchMetaFromNodes [] cv _ _ = return cv
 
 fetchMetaFromNode :: Node -> KeyID -> String -> IO (Maybe Meta)
 fetchMetaFromNode node keyId mName = do
-	result <- queryNodeGet (intercalate "/" ["meta", hashToHex keyId, mName]) node
+	result <- queryNodeGet (intercalate "/" ["meta", crockford keyId, mName]) node
 	maybe (return Nothing) (\bs -> do
 		let meta = Meta.fromByteString bs
 		return meta

@@ -49,7 +49,7 @@ handShakeOut = do
 
 chunksHandler = do
 	[fp, sp] <- getPathInfo
-	let hsh = hexToHash (fp ++ sp)
+	let hsh = decrockford (fp ++ sp)
 	chunksPath <- liftIO $ toFullPath "store"
 	exists <- liftIO $ doesFileExist $ joinPath [chunksPath, fp, sp]
 	if exists then

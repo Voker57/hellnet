@@ -40,9 +40,9 @@ data Opts = Opts {
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['m'] ["meta-encryption"]
-		(OptArg (\s o ->  o {encryptMeta = True, metaEncKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Use encryption on meta (optionally (if encrypting) with specified key)",
+		(OptArg (\s o ->  o {encryptMeta = True, metaEncKey = maybe (Nothing) (Just . decrockford) s}) "key") "Use encryption on meta (optionally (if encrypting) with specified key)",
 	Option ['e'] ["encrypt"]
-		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . hexToHash) s}) "key") "Encrypt content (optionally with specified key)",
+		(OptArg (\s o ->  o {encrypt = True, encKey = maybe (Nothing) (Just . decrockford) s}) "key") "Encrypt content (optionally with specified key)",
 	Option ['u'] ["update-meta"]
 		(NoArg (\o -> o {updateMeta = True})) "Automatically update meta before retrieval",
 	Option ['v'] ["verbose"]
@@ -183,7 +183,7 @@ main = do
 				opts' = case encKey of
 					Just k -> preOpts {encryptMeta = True, metaEncKey = Just k}
 					otherwise -> preOpts
-					in (take 2 args ++ hashToHex keyid : namepath, opts')
+					in (take 2 args ++ crockford keyid : namepath, opts')
 		otherwise -> (args, preOpts)
 	theKey <- if encrypt opts then
 		(return . Just) =<< (maybe (genKey) (return) $ encKey opts)
@@ -194,7 +194,7 @@ main = do
 		else
 		return Nothing
 	let ensureSuppliedMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) (fail "You can't decrypt with random key!")
-	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (hashToHex $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
+	let announceMetaKey = when (isNothing (metaEncKey opts) && encryptMeta opts) $ printf "Your meta key will be %s" (crockford $ fromMaybe (error "Meta key is going to be used but wasn't generated") theMetaKey)
 	case args' of
 		["pull", dirName, metaKey, mName] -> do
 			keyid <- resolveKeyName metaKey

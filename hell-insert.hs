@@ -37,7 +37,7 @@ data Opts = Opts {encKey :: Maybe Key, encrypt :: Bool,  chunk :: Bool, indexOnl
 options :: [OptDescr (Opts -> Opts)]
 options = [
 	Option ['e'] ["encrypt"]
-		(OptArg (\s o -> o {encKey = maybe (Nothing) (Just . hexToHash) s, encrypt = True}) "key") "Encrypt (optionally with specified key)",
+		(OptArg (\s o -> o {encKey = maybe (Nothing) (Just . decrockford) s, encrypt = True}) "key") "Encrypt (optionally with specified key)",
 	Option ['c'] ["chunk"]
 		(NoArg (\o -> o {chunk = True})) "Add file as single chunk (Only for files < 256 kB)",
 	Option ['i'] ["index-only"]
@@ -110,6 +110,6 @@ main = do
 			else
 			if indexOnly optz then
 				mapM (indexFilePrintHash theKey) argz
-				else
+				else do
 				mapM (insertFilePrintHash theKey) argz
 		mapM (\u -> if crypt optz then print $ encryptURI u else print u) urls

@@ -101,7 +101,7 @@ insertChunk :: Maybe Key -> Chunk -> IO Hash
 insertChunk encKey ch = do
 	let chunk = maybe (ch) ((flip encryptSym) ch) encKey
 	let chunkDigestRaw = Hellnet.Crypto.hash chunk
-	let chunkDigest = hashToHex chunkDigestRaw
+	let chunkDigest = crockford chunkDigestRaw
 	let fullPath = joinPath ["store", (Prelude.take 2 chunkDigest), (Prelude.drop 2 chunkDigest)]
 	storeFile fullPath (chunk)
 	return chunkDigestRaw
@@ -109,7 +109,7 @@ insertChunk encKey ch = do
 -- | Fetches chunk from store or index
 getChunk :: Maybe Key -> Hash -> IO (Maybe Chunk)
 getChunk key hsh = do
-	let chunkKey = hashToHex hsh
+	let chunkKey = crockford hsh
 	chunkLocal <- getFile' ["store", (Prelude.take 2 chunkKey), (Prelude.drop 2 chunkKey)]
 	chunk <- case chunkLocal of
 		Just fil -> return $ Just fil
@@ -160,13 +160,13 @@ getFile' fs = getFile (joinPath fs)
 -- | Removes chunk from storage
 purgeChunk :: Hash -> IO ()
 purgeChunk hsh = do
-	let hexHsh = hashToHex hsh
+	let hexHsh = crockford hsh
 	fpath <- toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
 	removeFile fpath
 
 -- | Converts hash to chunk path (first byte as directory)
 hashToPath :: Hash -> IO FilePath
-hashToPath hsh = let hexHsh = hashToHex hsh in toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
+hashToPath hsh = let hexHsh = crockford hsh in toFullPath (joinPath ["store", (Prelude.take 2 hexHsh), (Prelude.drop 2 hexHsh)])
 
 -- | Whether chunk with that hash is stored already
 isStored :: Hash -> IO Bool
@@ -177,19 +177,19 @@ isStored hsh = do
 -- | Gets meta from storage
 getMeta :: KeyID -> String -> IO (Maybe Meta)
 getMeta keyId mName = do
-	mFile <- getFile' ["meta", hashToHex keyId, mName]
+	mFile <- getFile' ["meta", crockford keyId, mName]
 	return $ maybe (Nothing) (Meta.fromByteString) mFile
 
 -- | Gets all meta names for given key
 getMetaNames :: KeyID -> IO [String]
 getMetaNames keyid = do
-	let path = ["meta", hashToHex keyid]
+	let path = ["meta", crockford keyid]
 	res <- getDirectory' path
 	return $ fromMaybe [] res
 
 -- | Stores meta in storage
 storeMeta :: Meta -> IO ()
-storeMeta m = storeFile' ["meta", hashToHex (keyID m), metaName m] $ Meta.toByteString m
+storeMeta m = storeFile' ["meta", crockford (keyID m), metaName m] $ Meta.toByteString m
 
 -- | Returns list of all directory entries
 getDirectory :: FilePath -> IO (Maybe [FilePath])
@@ -219,8 +219,8 @@ insertData encKey dat = if BSL.null $ BSL.drop (256 * 1024) dat then do
 storePrivateKey :: KeyID -> PrivateKey -> IO ()
 storePrivateKey kid pKey = do
 	let bs = BUL.fromString $ JSON.toString $ toJson pKey
-	storeFile' ["privatekeys", hashToHex kid] bs
-	fPath <- toFullPath $ joinPath ["privatekeys", hashToHex kid]
+	storeFile' ["privatekeys", crockford kid] bs
+	fPath <- toFullPath $ joinPath ["privatekeys", crockford kid]
 	setFileMode fPath $ unionFileModes ownerWriteMode ownerReadMode
 
 -- | Generates key pair and stores'em
@@ -235,7 +235,7 @@ generateKeyPair = do
 -- | Gets private key from storage
 getPrivateKey :: KeyID -> IO (Maybe PrivateKey)
 getPrivateKey kid = do
-	fil <- getFile' ["privatekeys", hashToHex kid]
+	fil <- getFile' ["privatekeys", crockford kid]
 	return $ case fil of
 		Nothing -> Nothing
 		Just k -> either (const Nothing) (fromJson) $ JSON.fromString $ BUL.toString k
@@ -255,8 +255,8 @@ regenMeta meta = do
 
 instance Jsonable (Map.Map String KeyID) where
 	toJson m = JObject $ Map.map (stringifyValue) m where
-		stringifyValue v = JString $ hashToHex v
-	fromJson (JObject m) = Just $ Map.map (hexToHash . unStringifyValue) m where
+		stringifyValue v = JString $ crockford v
+	fromJson (JObject m) = Just $ Map.map (decrockford . unStringifyValue) m where
 		unStringifyValue (JString v) = v
 		unStringifyValue _ = ""
 	fromJson _ = Nothing
@@ -279,7 +279,7 @@ storeKeyAliases m = storeFile "keyaliases" $ BUL.fromString $ JSON.toString $ to
 resolveKeyName :: String -> IO KeyID
 resolveKeyName name = do
 	aliases <- getKeyAliases
-	return $ fromMaybe (hexToHash name) $ Map.lookup name aliases
+	return $ fromMaybe (decrockford name) $ Map.lookup name aliases
 
 -- | Return chunk hash, as it would be in database (dry run of insertChunk)
 hashChunk :: Maybe Key -> Chunk -> IO Hash
@@ -298,12 +298,12 @@ indexChunk encKey ch cl = do
 -- | Inserts index into map
 insertIndex :: Hash -> ChunkLocation -> IO ()
 insertIndex hsh cl = do
-	storeFile' ["chunkmap", hashToHex $ take 1 hsh, hashToHex $ drop 1 hsh] $ BUL.fromString $ JSON.toString $ toJson cl
+	storeFile' ["chunkmap", crockford $ take 1 hsh, crockford $ drop 1 hsh] $ BUL.fromString $ JSON.toString $ toJson cl
 
 -- | Looks up index in map
 getIndex :: Hash -> IO (Maybe ChunkLocation)
 getIndex hsh = do
-	contentM <- getFile' ["chunkmap", hashToHex $ take 1 hsh, hashToHex $ drop 1 hsh]
+	contentM <- getFile' ["chunkmap", crockford $ take 1 hsh, crockford $ drop 1 hsh]
 	return $ case contentM of
 		Nothing -> Nothing
 		Just content -> case JSON.fromString $ BUL.toString content of
@@ -325,7 +325,7 @@ getExternalChunk (FileLocation path offset encKey) = do
 -- | Deletes meta
 deleteMeta :: KeyID -> String -> IO Bool
 deleteMeta kid mname = do
-	fpath <- toFullPath $ joinPath ["meta", hashToHex kid, mname]
+	fpath <- toFullPath $ joinPath ["meta", crockford kid, mname]
 	exists <- doesFileExist fpath
 	if exists then do
 		removeFile fpath
