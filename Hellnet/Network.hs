@@ -410,6 +410,9 @@ findURI uri = case uri of
 	(MetaURI hsh (Just mName) mPath mKey _) -> do
 		-- Fetch raw meta data
 		findMetaContentByName mKey hsh mName mPath >>= return . fmap (BUL.fromString . JSON.toString . JSON.JArray)
+	u@(CryptURI _) -> case decryptURI u of
+		Just (CryptURI _) -> return Nothing
+		Just dy -> findURI dy
 	otherwise -> return Nothing
 
 -- | Tries to find public key in network by its ID
