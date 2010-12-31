@@ -17,6 +17,8 @@
 
 module Hellnet.Utils (
 	breakLazySubstring
+	, crockford
+	, decrockford
 	, discard
 	, explode
 	, filt
@@ -41,6 +43,7 @@ module Hellnet.Utils (
 	, unjust
 	)  where
 
+import Codec.Crockford
 import Codec.Text.Raw
 import Codec.Utils
 import Control.Concurrent
@@ -48,6 +51,7 @@ import qualified Control.Exception as Ex
 import Data.Foldable (foldlM)
 import Data.LargeWord
 import Data.List
+import Data.Maybe
 import Data.Time.Clock.POSIX
 import Data.Word
 import Hellnet
@@ -176,3 +180,11 @@ breakLazySubstring pat src = search 0 src
 -- | Returns value of environment variable and does not flee in panic if it doesn't exist
 safeGetEnv :: String -> IO (Maybe String)
 safeGetEnv name = catch (getEnv name >>= (return . Just)) (\e -> if isDoesNotExistError e then return Nothing else ioError e)
+
+-- | Encodes string of octets in Crockford
+crockford :: [Octet] -> String
+crockford = Codec.Crockford.encode . fromOctets 256
+
+-- | Decodes Crockforded string of octets
+decrockford :: String -> [Octet]
+decrockford = toOctets 256 . fromMaybe 0 . Codec.Crockford.decode
