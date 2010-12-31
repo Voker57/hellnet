@@ -48,7 +48,7 @@ options = [
 		(NoArg (\o -> o {cryptOnly = True})) "Encrypt given URIs with XXTEA (see above)"
 	]
 
-defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, indexOnly = True, crypt = False, cryptOnly = False}
+defaultOptions = Opts {encKey = Nothing, encrypt = False, chunk = False, indexOnly = False, crypt = False, cryptOnly = False}
 
 
 insertFilePrintHash :: Maybe [Octet] ->  FilePath -> IO HellnetURI
