@@ -30,6 +30,7 @@ import qualified Data.ByteString.Lazy as BSL
 import System.Console.GetOpt
 import System.Directory
 import System.Environment (getArgs)
+import System.IO
 import System.IO.Error
 import System.Random
 import Text.Printf
@@ -73,7 +74,7 @@ getURI opts uri =
 			maybe (fail "Not found") (BSL.writeFile filename) resultM
 		Just u@(CryptURI dt) -> do
 			let decryptedUri = Hellnet.URI.decryptURI u
-			when (isJust decryptedUri) $ printf "Actual URI is %s\n" (show $ fromJust decryptedUri)
+			when (isJust decryptedUri) $ hPutStr stderr $ printf "Actual URI is %s\n" (show $ fromJust decryptedUri)
 			getURI opts decryptedUri
 		otherwise -> fail "URI type not implemented yet"
 
