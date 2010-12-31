@@ -83,7 +83,7 @@ getURI opts uri =
 			let decryptedUri = Hellnet.URI.decryptURI u
 			when (isJust decryptedUri) $ hPutStr stderr $ printf "Actual URI is %s\n" (show $ fromJust decryptedUri)
 			getURI opts decryptedUri
-		otherwise -> fail "URI type not implemented yet"
+		otherwise -> fail "URI type not implemented"
 
 main = do
 	args <- getArgs
