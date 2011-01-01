@@ -52,6 +52,11 @@ getURI opts uri = do
 	let getOutputHandle fnameUnsafe = do
 		let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
 		case fname of
+			Just fn -> do
+				exists <- doesFileExist fn
+				when (exists) (fail $ printf "File '%s' already exists!" fn)
+			Nothing -> return ()
+		case fname of
 			Just filename -> do
 				hPutStrLn stderr $ printf "Saving to file: %s" filename
 				openFile filename WriteMode
