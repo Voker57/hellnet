@@ -15,7 +15,7 @@
 --     along with Hellnet.  If not, see <http://www.gnu.org/licenses/>.
 --------------------------------------------------------------------------------
 
-module Hellnet.Files (insertFile, downloadFile, indexFile, indexData, downloadFileChunks) where
+module Hellnet.Files (insertFile, downloadFile, indexFile, indexData, downloadFileChunks, downloadFileToHandle, downloadFileChunksToHandle) where
 
 import Codec.Utils
 import Data.Foldable (foldrM)
@@ -71,19 +71,30 @@ indexData encKey fpath = do
 		hsh <- indexChunk encKey dat (FileLocation fpathAbs 0 encKey)
 		return $ ChunkURI hsh encKey (Just $ snd $ splitFileName fpath)
 
-getChunkAppendToFile :: Maybe Key -> FilePath -> Hash -> IO ()
-getChunkAppendToFile encKey fname hsh = do
+getChunkAppendToHandle :: Maybe Key -> Handle -> Hash -> IO ()
+getChunkAppendToHandle encKey h hsh = do
 	conts <- getChunk encKey hsh
-	maybe (error ("chunk not found in storage: " ++ (crockford hsh))) (BSL.appendFile fname) conts
+	maybe (error ("chunk not found in storage: " ++ (crockford hsh))) (BSL.hPut h) conts
 
-downloadFile :: Maybe Key -> FilePath -> Hash -> IO ()
-downloadFile encKey fname h = do
-	hsE <- fetchFile encKey h
+downloadFileToHandle :: Maybe Key -> Handle -> Hash -> IO ()
+downloadFileToHandle encKey h hs = do
+	hsE <- fetchFile encKey hs
 	case hsE of
 		Left _ -> return ()
-		Right hs -> downloadFileChunks encKey fname hs
+		Right hs -> downloadFileChunksToHandle encKey h hs
+
+downloadFileChunksToHandle :: Maybe Key -> Handle -> [Hash] -> IO ()
+downloadFileChunksToHandle encKey h hs = do
+	mapM_ (getChunkAppendToHandle encKey h) hs
+
+downloadFile :: Maybe Key -> FilePath -> Hash -> IO ()
+downloadFile encKey fpath hsh = do
+	h <- openFile fpath WriteMode
+	downloadFileToHandle encKey h hsh
+	hClose h
 
 downloadFileChunks :: Maybe Key -> FilePath -> [Hash] -> IO ()
-downloadFileChunks encKey fname hs = do
-	writeFile fname ""
-	mapM_ (getChunkAppendToFile encKey fname) hs
+downloadFileChunks encKey fpath hs = do
+	h <- openFile fpath WriteMode
+	downloadFileChunksToHandle encKey h hs
+	hClose h

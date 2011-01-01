@@ -48,22 +48,28 @@ options = [
 
 defaultOptions = Opts { deintegrateFile = False, decryptUri = False }
 
-getURI opts uri =
+getURI opts uri = do
+	let getOutputHandle fnameUnsafe = do
+		let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
+		case fname of
+			Just filename -> do
+				hPutStrLn stderr $ printf "Saving to file: %s" filename
+				openFile filename WriteMode
+			Nothing -> do
+				hPutStrLn stderr "Saving to stdin"
+				return stdin
 	case uri of
 		Nothing -> fail "Incorrect URI"
 		Just (ChunkURI hsh key fnameUnsafe) -> do
-			let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
-			let filename = maybe "/dev/stdout" (id) fname
-			hPutStrLn stderr $ printf "Saving to file: %s" filename
+			fileHandle <- getOutputHandle fnameUnsafe
 			conts <- findChunk key hsh
-			maybe (fail "Chunk not found in network") (BSL.writeFile filename) conts
+			maybe (fail "Chunk not found in network") (\bs -> BSL.hPutStr fileHandle bs >> hClose fileHandle) conts
 		Just (FileURI hsh key fnameUnsafe) -> do
-			let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
-			let filename = maybe "/dev/stdout" (id) fname
-			hPutStrLn stderr $ printf "Saving to file: %s" filename
+			fileHandle <- getOutputHandle fnameUnsafe
 			fil <- fetchFile key hsh
 			either (\nf -> (error ("File couldn't be completely found in network. Not found chunks: " ++ (intercalate "\n" (map (crockford) nf))) )) (\hs -> do
-				downloadFileChunks key filename hs
+				downloadFileChunksToHandle key fileHandle hs
+				hClose fileHandle
 				when (deintegrateFile opts) (do
 					toDelete <- filterM (const $ do
 						rnd <- randomIO :: IO Float
@@ -74,11 +80,9 @@ getURI opts uri =
 				return ()
 				) fil
 		Just u@(MetaURI _ _ _ _ fnameUnsafe) -> do
-			let fname = fmap (lastDef "file.dat" . explode '/') fnameUnsafe
-			let filename = maybe "/dev/stdout" (id) fname
-			hPutStrLn stderr $ printf "Saving to file: %s" filename
+			fileHandle <- getOutputHandle fnameUnsafe
 			resultM <- findURI u
-			maybe (fail "Not found") (BSL.writeFile filename) resultM
+			maybe (fail "Not found") (\bs -> BSL.hPutStr fileHandle bs >> hClose fileHandle) resultM
 		Just u@(CryptURI dt) -> do
 			let decryptedUri = Hellnet.URI.decryptURI u
 			when (isJust decryptedUri) $ hPutStr stderr $ printf "Actual URI is %s\n" (show $ fromJust decryptedUri)
